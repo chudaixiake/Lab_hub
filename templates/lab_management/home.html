@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}实验室主页 - 成员与计划{% endblock %}
+
+{% block content %}
+<div class="grid">
+    <div class="card">
+        <h2 class="card-title">👥 实验室成员</h2>
+        {% if members %}
+            {% for member in members %}
+            <div class="member-card" style="margin-bottom: 1rem;">
+                <div class="member-name">{{ member.user.username }}</div>
+                <div class="member-topic">{{ member.research_topic }}</div>
+                {% if member.bio %}
+                <div class="member-bio">{{ member.bio|truncatechars:100 }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <p style="color: #999;">暂无成员信息</p>
+        {% endif %}
+        <a href="{% url 'member_list' %}" style="color: #667eea; text-decoration: none;">查看全部成员 →</a>
+    </div>
+
+    <div class="card">
+        <h2 class="card-title">📋 最新计划</h2>
+        {% if recent_plans %}
+            {% for plan in recent_plans %}
+            <div class="plan-item">
+                <div class="plan-header">
+                    <span class="plan-user">{{ plan.user.username }}</span>
+                    <span class="plan-date">{{ plan.date }}</span>
+                </div>
+                <div class="plan-content">{{ plan.content|truncatechars:80 }}</div>
+                <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
+                    {% if plan.is_completed %}✓ 已完成{% else %}⏳ 进行中{% endif %}
+                </span>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p style="color: #999;">暂无计划</p>
+        {% endif %}
+        <a href="{% url 'plan_list' %}" style="color: #667eea; text-decoration: none;">查看全部计划 →</a>
+    </div>
+</div>
+{% endblock %}
