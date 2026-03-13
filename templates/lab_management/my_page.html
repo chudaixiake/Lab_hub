@@ -1,0 +1,296 @@
+{% extends 'base.html' %}
+
+{% block title %}我的主页{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">我的主页</h1>
+    <p class="page-subtitle">管理您的个人资料、文档和计划</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">个人资料</h2>
+    </div>
+    <form method="post" action="{% url 'edit_profile' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="avatar-upload">
+            {% if profile.avatar %}
+            <img src="{{ profile.avatar.url }}" alt="头像" class="avatar-preview">
+            {% else %}
+            <div class="avatar-preview-placeholder">
+                {{ user.username|first|upper }}
+            </div>
+            {% endif %}
+            <div style="text-align: center;">
+                <label class="btn btn-secondary btn-sm">
+                    选择头像
+                    <input type="file" name="avatar" accept="image/*" style="display: none;">
+                </label>
+                <p style="font-size: 0.8125rem; color: var(--color-text-tertiary); margin-top: 8px;">支持 JPG、PNG 格式</p>
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+            <div class="form-group">
+                <label class="form-label">用户名</label>
+                <input type="text" value="{{ user.username }}" disabled class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">姓名</label>
+                <input type="text" name="first_name" value="{{ user.first_name }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">研究课题</label>
+                <input type="text" name="research_topic" value="{{ profile.research_topic }}" class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">个人主页链接</label>
+                <input type="url" name="personal_page" value="{{ profile.personal_page|default:'' }}" placeholder="https://..." class="form-input">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">个人简介</label>
+            <textarea name="bio" rows="3" class="form-input">{{ profile.bio|default:'' }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">保存修改</button>
+    </form>
+</div>
+
+<div class="grid grid-2">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">上传文档</h2>
+        </div>
+        <form method="post" action="{% url 'add_document' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label">文档标题</label>
+                <input type="text" name="title" required class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">选择文件</label>
+                <input type="file" name="file" required class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">描述</label>
+                <textarea name="description" rows="2" class="form-input"></textarea>
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" name="is_public" checked style="width: 18px; height: 18px;">
+                    <span>公开文档（所有人可见）</span>
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">上传文档</button>
+        </form>
+        
+        {% if documents %}
+        <h4 style="margin-top: 24px; margin-bottom: 16px; font-weight: 600;">已上传文档</h4>
+            {% for doc in documents %}
+            <div class="plan-item">
+                <div class="plan-header">
+                    <span style="font-weight: 600;">{{ doc.title }}</span>
+                    <span class="plan-date">{{ doc.uploaded_at|date:"Y-m-d" }}</span>
+                </div>
+                <p style="color: var(--color-text-secondary); margin-bottom: 12px;">{{ doc.description|default:"无描述" }}</p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="tag {% if doc.is_public %}tag-public{% else %}tag-private{% endif %}">
+                        {% if doc.is_public %}公开{% else %}私密{% endif %}
+                    </span>
+                    <div style="display: flex; gap: 12px;">
+                        <a href="{% url 'download_document' doc.id %}" class="link">下载</a>
+                        <a href="{% url 'delete_document' doc.id %}" onclick="return confirm('确定删除？')" class="link" style="color: var(--color-danger);">删除</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">添加计划</h2>
+        </div>
+        <form method="post" action="{% url 'add_plan' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label">日期</label>
+                <input type="date" name="date" required class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">计划内容</label>
+                <textarea name="content" rows="3" required class="form-input"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">添加计划</button>
+        </form>
+        
+        {% if plans %}
+        <h4 style="margin-top: 24px; margin-bottom: 16px; font-weight: 600;">我的计划</h4>
+            {% for plan in plans %}
+            <div class="plan-item">
+                <div class="plan-header">
+                    <span class="plan-date">{{ plan.date }}</span>
+                    <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
+                        {% if plan.is_completed %}✓ 已完成{% else %}待完成{% endif %}
+                    </span>
+                </div>
+                <p class="plan-content">{{ plan.content }}</p>
+                <div style="display: flex; gap: 16px; margin-top: 8px;">
+                    <a href="{% url 'toggle_plan' plan.id %}" class="link">{% if plan.is_completed %}标记未完成{% else %}标记完成{% endif %}</a>
+                    <a href="{% url 'edit_plan' plan.id %}" class="link">编辑</a>
+                    <a href="{% url 'delete_plan' plan.id %}" onclick="return confirm('确定删除？')" class="link" style="color: var(--color-danger);">删除</a>
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">添加成果</h2>
+    </div>
+    <form method="post" action="{% url 'add_achievement' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <div class="form-group">
+                <label class="form-label">成果名称 *</label>
+                <input type="text" name="title" required class="form-input" placeholder="论文题目/专利名称/奖项名称">
+            </div>
+            <div class="form-group">
+                <label class="form-label">类型 *</label>
+                <select name="achievement_type" required class="form-input">
+                    <option value="">请选择</option>
+                    <option value="paper">论文</option>
+                    <option value="patent">专利</option>
+                    <option value="award">奖项</option>
+                    <option value="project">项目</option>
+                    <option value="other">其他</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">日期</label>
+                <input type="date" name="date" class="form-input">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">描述</label>
+            <textarea name="description" rows="2" class="form-input" placeholder="简要描述"></textarea>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <div class="form-group">
+                <label class="form-label">链接</label>
+                <input type="url" name="link" class="form-input" placeholder="论文链接、专利链接等">
+            </div>
+            <div class="form-group">
+                <label class="form-label">附件</label>
+                <input type="file" name="file" class="form-input">
+            </div>
+        </div>
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" name="is_public" checked style="width: 18px; height: 18px;">
+                <span>公开（团队可见）</span>
+            </label>
+        </div>
+        <button type="submit" class="btn btn-primary">添加成果</button>
+    </form>
+    
+    {% if achievements %}
+    <h4 style="margin-top: 24px; margin-bottom: 16px; font-weight: 600;">我的成果</h4>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+        {% for ach in achievements %}
+        <div class="plan-item" style="margin-bottom: 0;">
+            <div class="plan-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="tag" style="background: {% if ach.achievement_type == 'paper' %}rgba(37, 99, 235, 0.1){% elif ach.achievement_type == 'patent' %}rgba(16, 185, 129, 0.1){% elif ach.achievement_type == 'award' %}rgba(245, 158, 11, 0.1){% else %}rgba(107, 114, 128, 0.1){% endif %}; color: {% if ach.achievement_type == 'paper' %}#2563eb{% elif ach.achievement_type == 'patent' %}#10b981{% elif ach.achievement_type == 'award' %}#f59e0b{% else %}#6b7280{% endif %};">
+                        {% if ach.achievement_type == 'paper' %}📄 论文
+                        {% elif ach.achievement_type == 'patent' %}🔧 专利
+                        {% elif ach.achievement_type == 'award' %}🏆 奖项
+                        {% elif ach.achievement_type == 'project' %}📁 项目
+                        {% else %}📌 其他{% endif %}
+                    </span>
+                    <span style="font-weight: 600;">{{ ach.title }}</span>
+                </div>
+                <span class="plan-date">{{ ach.date|date:"Y-m-d"|default:"" }}</span>
+            </div>
+            {% if ach.description %}
+            <p style="color: var(--color-text-secondary); margin-bottom: 8px;">{{ ach.description }}</p>
+            {% endif %}
+            <div style="display: flex; gap: 16px; align-items: center;">
+                {% if ach.link %}
+                <a href="{{ ach.link }}" target="_blank" class="link">查看链接</a>
+                {% endif %}
+                {% if ach.file %}
+                <a href="{{ ach.file.url }}" class="link" download>下载附件</a>
+                {% endif %}
+                <a href="{% url 'delete_achievement' ach.id %}" onclick="return confirm('确定删除？')" class="link" style="color: var(--color-danger);">删除</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">收到的留言</h2>
+    </div>
+    {% if received_messages %}
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+        {% for msg in received_messages %}
+        <div class="plan-item" style="margin-bottom: 0;">
+            <div class="plan-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    {% if msg.sender.profile.avatar %}
+                    <img src="{{ msg.sender.profile.avatar.url }}" alt="" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+                    {% else %}
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.75rem;">
+                        {{ msg.sender.username|first|upper }}
+                    </div>
+                    {% endif %}
+                    <span style="font-weight: 600;">{{ msg.sender.first_name|default:msg.sender.username }}</span>
+                    <span class="plan-date">{{ msg.created_at|date:"Y-m-d H:i" }}</span>
+                    {% if not msg.is_read %}
+                    <span class="tag tag-primary">新</span>
+                    {% endif %}
+                </div>
+                <a href="{% url 'delete_message' msg.id %}" class="link" style="color: var(--color-danger);" onclick="return confirm('确定要删除这条留言吗？')">删除</a>
+            </div>
+            <p class="plan-content" style="margin-left: 44px; white-space: pre-wrap;">{{ msg.content }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="color: var(--color-text-tertiary);">暂无留言</p>
+    {% endif %}
+</div>
+
+{% if user.is_authenticated %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">发布公告</h2>
+    </div>
+    <form method="post" action="{% url 'add_announcement' %}">
+        {% csrf_token %}
+        <div class="form-group">
+            <label class="form-label">标题</label>
+            <input type="text" name="title" required class="form-input">
+        </div>
+        <div class="form-group">
+            <label class="form-label">内容</label>
+            <textarea name="content" rows="4" required class="form-input"></textarea>
+        </div>
+        {% if user.is_superuser %}
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" name="is_pinned">
+                <span>置顶公告</span>
+            </label>
+        </div>
+        {% endif %}
+        <button type="submit" class="btn btn-primary">发布公告</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

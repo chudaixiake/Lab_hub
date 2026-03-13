@@ -3,7 +3,10 @@
 {% block title %}日常计划{% endblock %}
 
 {% block content %}
-<h1 style="margin-bottom: 2rem; color: #333;">📋 日常计划</h1>
+<div class="page-header">
+    <h1 class="page-title">日常计划</h1>
+    <p class="page-subtitle">团队成员的每日工作计划</p>
+</div>
 
 {% for plan in plans %}
 <div class="plan-item">
@@ -18,7 +21,10 @@
 </div>
 {% empty %}
 <div class="card">
-    <p style="color: #999;">暂无计划，请前往<a href="/admin/" style="color: #667eea;">后台管理</a>添加。</p>
+    <div class="empty-state">
+        <div class="empty-state-icon">📋</div>
+        <p>暂无计划，请前往<a href="{% url 'my_page' %}" class="link">我的主页</a>添加。</p>
+    </div>
 </div>
 {% endfor %}
 {% endblock %}

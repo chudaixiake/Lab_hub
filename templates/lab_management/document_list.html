@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}文档中心{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">文档中心</h1>
+    <p class="page-subtitle">团队共享的学习资料与文档</p>
+</div>
+
+<div class="card">
+    {% if documents %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>文档标题</th>
+                    <th>上传者</th>
+                    <th>类型</th>
+                    <th>上传时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for doc in documents %}
+                <tr>
+                    <td>
+                        <strong>{{ doc.title }}</strong>
+                        {% if doc.description %}<br><span style="color: var(--color-text-secondary); font-size: 0.875rem;">{{ doc.description }}</span>{% endif %}
+                    </td>
+                    <td>{{ doc.user.username }}</td>
+                    <td>
+                        <span class="tag" style="background: var(--color-surface-hover);">
+                            {{ doc.get_document_type_display }}
+                        </span>
+                    </td>
+                    <td style="color: var(--color-text-secondary);">{{ doc.uploaded_at|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        <a href="{% url 'download_document' doc.id %}" class="btn btn-sm btn-secondary">下载</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">📚</div>
+        <p>暂无上传文档</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -3,22 +3,37 @@
 {% block title %}实验室成员{% endblock %}
 
 {% block content %}
-<h1 style="margin-bottom: 2rem; color: #333;">👥 实验室成员</h1>
+<div class="page-header">
+    <h1 class="page-title">实验室成员</h1>
+    <p class="page-subtitle">探索我们的研究团队</p>
+</div>
 
 <div class="grid">
     {% for member in members %}
-    <div class="member-card">
-        <div class="member-name">{{ member.user.username }}</div>
-        <div class="member-topic">{{ member.research_topic }}</div>
-        {% if member.bio %}
-        <div class="member-bio">{{ member.bio }}</div>
-        {% else %}
-        <div class="member-bio" style="color: #999; font-style: italic;">暂无个人简介</div>
-        {% endif %}
-    </div>
+    <a href="{% url 'user_profile' member.user.username %}" style="text-decoration: none; color: inherit;">
+        <div class="member-card">
+            {% if member.avatar %}
+            <img src="{{ member.avatar.url }}" alt="{{ member.user.username }}" class="member-avatar">
+            {% else %}
+            <div class="member-avatar-placeholder">
+                {{ member.user.username|first|upper }}
+            </div>
+            {% endif %}
+            <div class="member-name">{{ member.user.first_name|default:member.user.username }}</div>
+            <div class="member-topic">{{ member.research_topic|truncatechars:30 }}</div>
+            {% if member.bio %}
+            <div class="member-bio">{{ member.bio|truncatechars:100 }}</div>
+            {% else %}
+            <div class="member-bio" style="font-style: italic;">暂无个人简介</div>
+            {% endif %}
+        </div>
+    </a>
     {% empty %}
-    <div class="card">
-        <p style="color: #999;">暂无成员信息，请前往<a href="/admin/" style="color: #667eea;">后台管理</a>添加。</p>
+    <div class="card" style="grid-column: 1 / -1;">
+        <div class="empty-state">
+            <div class="empty-state-icon">👥</div>
+            <p>暂无成员信息</p>
+        </div>
     </div>
     {% endfor %}
 </div>

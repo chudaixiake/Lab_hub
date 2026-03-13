@@ -3,27 +3,54 @@
 {% block title %}实验室主页 - 成员与计划{% endblock %}
 
 {% block content %}
-<div class="grid">
+{% if announcements %}
+<div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+    <h2 style="margin-bottom: 1rem;">公告</h2>
+    {% for announcement in announcements %}
+    <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 0.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <strong>{% if announcement.is_pinned %}📌 {% endif %}{{ announcement.title }}</strong>
+            <span style="font-size: 0.85rem; opacity: 0.8;">{{ announcement.created_at|date:"Y-m-d" }}</span>
+        </div>
+        <p style="margin-top: 0.5rem; opacity: 0.9;">{{ announcement.content|truncatechars:100 }}</p>
+    </div>
+    {% endfor %}
+    <a href="{% url 'announcement_list' %}" style="color: white; opacity: 0.8; text-decoration: none;">查看全部公告 →</a>
+</div>
+{% endif %}
+
+<div class="grid grid-2">
     <div class="card">
-        <h2 class="card-title">👥 实验室成员</h2>
+        <div class="card-header">
+            <h2 class="card-title">成员</h2>
+            <a href="{% url 'member_list' %}" class="link">查看全部</a>
+        </div>
         {% if members %}
             {% for member in members %}
-            <div class="member-card" style="margin-bottom: 1rem;">
-                <div class="member-name">{{ member.user.username }}</div>
-                <div class="member-topic">{{ member.research_topic }}</div>
-                {% if member.bio %}
-                <div class="member-bio">{{ member.bio|truncatechars:100 }}</div>
+            <a href="{% url 'user_profile' member.user.username %}" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 16px; padding: 12px; border-radius: var(--radius-sm); margin-bottom: 8px; transition: background var(--transition-fast);">
+                {% if member.avatar %}
+                <img src="{{ member.avatar.url }}" alt="{{ member.user.username }}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
+                {% else %}
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                    {{ member.user.username|first|upper }}
+                </div>
                 {% endif %}
-            </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 600; color: var(--color-text-primary);">{{ member.user.first_name|default:member.user.username }}</div>
+                    <div style="font-size: 0.875rem; color: var(--color-text-secondary);">{{ member.research_topic|truncatechars:40 }}</div>
+                </div>
+            </a>
             {% endfor %}
         {% else %}
-            <p style="color: #999;">暂无成员信息</p>
+            <p style="color: var(--color-text-tertiary);">暂无成员信息</p>
         {% endif %}
-        <a href="{% url 'member_list' %}" style="color: #667eea; text-decoration: none;">查看全部成员 →</a>
     </div>
 
     <div class="card">
-        <h2 class="card-title">📋 最新计划</h2>
+        <div class="card-header">
+            <h2 class="card-title">最新计划</h2>
+            <a href="{% url 'plan_list' %}" class="link">查看全部</a>
+        </div>
         {% if recent_plans %}
             {% for plan in recent_plans %}
             <div class="plan-item">
@@ -38,9 +65,8 @@
             </div>
             {% endfor %}
         {% else %}
-            <p style="color: #999;">暂无计划</p>
+            <p style="color: var(--color-text-tertiary);">暂无计划，<a href="{% url 'my_page' %}" class="link">添加你的第一个计划</a></p>
         {% endif %}
-        <a href="{% url 'plan_list' %}" style="color: #667eea; text-decoration: none;">查看全部计划 →</a>
     </div>
 </div>
 {% endblock %}

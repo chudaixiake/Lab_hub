@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}编辑公告{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1 class="auth-title">编辑公告</h1>
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label">标题</label>
+                <input type="text" name="title" value="{{ announcement.title }}" required class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">内容</label>
+                <textarea name="content" rows="6" required class="form-input">{{ announcement.content }}</textarea>
+            </div>
+            {% if user.is_superuser %}
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" name="is_pinned" {% if announcement.is_pinned %}checked{% endif %}>
+                    <span>置顶公告</span>
+                </label>
+            </div>
+            {% endif %}
+            <div style="display: flex; gap: 12px;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">保存</button>
+                <a href="{% url 'announcement_list' %}" class="btn btn-secondary" style="flex: 1; text-align: center;">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

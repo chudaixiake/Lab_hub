@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block title %}成员详情 - {{ profile_user.username }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; gap: 32px; align-items: flex-start;">
+        <div style="flex-shrink: 0;">
+            {% if profile.avatar %}
+            <img src="{{ profile.avatar.url }}" alt="头像" style="width: 140px; height: 140px; border-radius: 50%; object-fit: cover; box-shadow: var(--shadow-lg);">
+            {% else %}
+            <div class="member-avatar-placeholder" style="width: 140px; height: 140px; font-size: 3rem;">
+                {{ profile_user.username|first|upper }}
+            </div>
+            {% endif %}
+        </div>
+        <div style="flex: 1;">
+            <h2 style="margin-bottom: 8px; font-size: 1.75rem; font-weight: 700;">{{ profile_user.first_name|default:profile_user.username }}</h2>
+            <p style="color: var(--color-accent); margin-bottom: 16px; font-size: 1.125rem; font-weight: 500;">{{ profile.research_topic }}</p>
+            {% if profile.bio %}
+            <p style="color: var(--color-text-secondary); margin-bottom: 16px; line-height: 1.7;">{{ profile.bio }}</p>
+            {% endif %}
+            {% if profile.personal_page %}
+            <a href="{{ profile.personal_page }}" target="_blank" class="btn btn-secondary btn-sm">个人主页</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if achievements %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">研究成果</h3>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+        {% for ach in achievements %}
+        <div class="plan-item" style="margin-bottom: 0;">
+            <div class="plan-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="tag" style="background: {% if ach.achievement_type == 'paper' %}rgba(37, 99, 235, 0.1){% elif ach.achievement_type == 'patent' %}rgba(16, 185, 129, 0.1){% elif ach.achievement_type == 'award' %}rgba(245, 158, 11, 0.1){% else %}rgba(107, 114, 128, 0.1){% endif %}; color: {% if ach.achievement_type == 'paper' %}#2563eb{% elif ach.achievement_type == 'patent' %}#10b981{% elif ach.achievement_type == 'award' %}#f59e0b{% else %}#6b7280{% endif %};">
+                        {% if ach.achievement_type == 'paper' %}📄 论文
+                        {% elif ach.achievement_type == 'patent' %}🔧 专利
+                        {% elif ach.achievement_type == 'award' %}🏆 奖项
+                        {% elif ach.achievement_type == 'project' %}📁 项目
+                        {% else %}📌 其他{% endif %}
+                    </span>
+                    <span style="font-weight: 600;">{{ ach.title }}</span>
+                </div>
+                {% if ach.date %}
+                <span class="plan-date">{{ ach.date|date:"Y-m-d" }}</span>
+                {% endif %}
+            </div>
+            {% if ach.description %}
+            <p style="color: var(--color-text-secondary); margin: 8px 0;">{{ ach.description }}</p>
+            {% endif %}
+            <div style="display: flex; gap: 16px;">
+                {% if ach.link %}
+                <a href="{{ ach.link }}" target="_blank" class="link">查看链接</a>
+                {% endif %}
+                {% if ach.file %}
+                <a href="{{ ach.file.url }}" class="link" download>下载附件</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">给 {{ profile_user.first_name|default:profile_user.username }} 留言</h3>
+    </div>
+    <form method="post" action="{% url 'send_message' profile_user.username %}">
+        {% csrf_token %}
+        <div style="display: flex; gap: 12px;">
+            <textarea name="content" rows="3" class="form-input" placeholder="写下你的留言..." required style="flex: 1; resize: vertical;"></textarea>
+        </div>
+        <div style="margin-top: 12px; text-align: right;">
+            <button type="submit" class="btn btn-primary">发送留言</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">留言墙</h3>
+    </div>
+    {% if messages_list %}
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+        {% for msg in messages_list %}
+        <div class="plan-item" style="margin-bottom: 0;">
+            <div class="plan-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    {% if msg.sender.profile.avatar %}
+                    <img src="{{ msg.sender.profile.avatar.url }}" alt="" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+                    {% else %}
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.75rem;">
+                        {{ msg.sender.username|first|upper }}
+                    </div>
+                    {% endif %}
+                    <span style="font-weight: 600;">{{ msg.sender.first_name|default:msg.sender.username }}</span>
+                    <span class="plan-date">{{ msg.created_at|date:"Y-m-d H:i" }}</span>
+                </div>
+                {% if user == msg.receiver or user == msg.sender %}
+                <a href="{% url 'delete_message' msg.id %}" class="link" style="color: var(--color-danger);" onclick="return confirm('确定要删除这条留言吗？')">删除</a>
+                {% endif %}
+            </div>
+            <p class="plan-content" style="margin-left: 44px; white-space: pre-wrap;">{{ msg.content }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="color: var(--color-text-tertiary);">暂无留言，快来抢沙发吧！</p>
+    {% endif %}
+</div>
+
+<div class="grid grid-2">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">上传的文档</h3>
+        </div>
+        {% if documents %}
+            {% for doc in documents %}
+            <div class="plan-item">
+                <div class="plan-header">
+                    <span style="font-weight: 600;">{{ doc.title }}</span>
+                    <span class="plan-date">{{ doc.uploaded_at|date:"Y-m-d" }}</span>
+                </div>
+                <p style="color: var(--color-text-secondary); margin-bottom: 12px;">{{ doc.description|default:"无描述" }}</p>
+                <a href="{% url 'download_document' doc.id %}" class="link">下载文件</a>
+            </div>
+            {% endfor %}
+        {% else %}
+        <p style="color: var(--color-text-tertiary);">暂无上传文档</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">最近计划</h3>
+        </div>
+        {% if plans %}
+            {% for plan in plans %}
+            <div class="plan-item">
+                <div class="plan-header">
+                    <span class="plan-date">{{ plan.date }}</span>
+                    <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
+                        {% if plan.is_completed %}✓ 已完成{% else %}待完成{% endif %}
+                    </span>
+                </div>
+                <p class="plan-content">{{ plan.content }}</p>
+            </div>
+            {% endfor %}
+        {% else %}
+        <p style="color: var(--color-text-tertiary);">暂无计划</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
