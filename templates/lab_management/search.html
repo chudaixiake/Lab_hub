@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block title %}搜索结果 - {{ query }}{% endblock %}
+
+{% block content %}
+<style>
+    .search-hero {
+        margin-bottom: 32px;
+    }
+    .search-hero h1 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        margin-bottom: 6px;
+    }
+    .search-keyword {
+        color: var(--color-accent);
+        background: var(--color-accent-light);
+        padding: 2px 10px;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+
+    .result-section { margin-bottom: 32px; }
+    .result-section-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--color-text-primary);
+    }
+    .result-count {
+        background: var(--color-accent-light);
+        color: var(--color-accent);
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 2px 9px;
+        border-radius: 10px;
+    }
+
+    .result-card {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border-light);
+        border-radius: var(--radius-md);
+        padding: 18px 20px;
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        transition: all 0.25s ease;
+        text-decoration: none;
+        color: inherit;
+        margin-bottom: 10px;
+    }
+    .result-card:hover {
+        border-color: rgba(99,102,241,0.2);
+        box-shadow: var(--shadow-sm);
+        transform: translateX(4px);
+    }
+    .result-card:last-child { margin-bottom: 0; }
+    .result-icon {
+        width: 42px; height: 42px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+    .result-title {
+        font-weight: 600;
+        font-size: 0.93rem;
+        color: var(--color-text-primary);
+        margin-bottom: 3px;
+    }
+    .result-meta {
+        font-size: 0.8rem;
+        color: var(--color-text-tertiary);
+    }
+
+    .result-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 12px;
+    }
+</style>
+
+<div class="search-hero anim-fade-up">
+    <h1><span class="icon icon-search"></span> 搜索结果</h1>
+    <p class="page-subtitle">关于 <span class="search-keyword">{{ query }}</span> 的结果</p>
+</div>
+
+{% if query %}
+<div class="search-results">
+    {% if results.members %}
+    <div class="result-section anim-fade-up-1">
+        <div class="result-section-title"><span class="icon icon-team"></span> 成员 <span class="result-count">{{ results.members|length }}</span></div>
+        <div class="result-grid">
+            {% for member in results.members %}
+            <a href="{% url 'user_profile' member.user.username %}" class="result-card">
+                <div class="result-icon" style="background: var(--color-accent-light);">
+                    {% if member.avatar %}
+                    <img src="{{ member.avatar.url }}" alt="" style="width: 42px; height: 42px; border-radius: 10px; object-fit: cover;">
+                    {% else %}
+                    <span style="color: var(--color-accent); font-weight: 700;">{{ member.user.username|first|upper }}</span>
+                    {% endif %}
+                </div>
+                <div>
+                    <div class="result-title">{{ member.user.first_name|default:member.user.username }}</div>
+                    <div class="result-meta">{{ member.research_topic|truncatechars:40|default:"暂无课题" }}</div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if results.achievements %}
+    <div class="result-section anim-fade-up-2">
+        <div class="result-section-title"><span class="icon icon-trophy"></span> 成果 <span class="result-count">{{ results.achievements|length }}</span></div>
+        {% for ach in results.achievements %}
+        <div class="result-card">
+            <div class="result-icon" style="background: {% if ach.achievement_type == 'paper' %}rgba(37,99,235,0.1){% elif ach.achievement_type == 'patent' %}rgba(16,185,129,0.1){% elif ach.achievement_type == 'award' %}rgba(245,158,11,0.1){% else %}rgba(100,116,139,0.1){% endif %};">
+                {% if ach.achievement_type == 'paper' %}<span class="icon icon-paper"></span>{% elif ach.achievement_type == 'patent' %}<span class="icon icon-patent"></span>{% elif ach.achievement_type == 'award' %}<span class="icon icon-trophy"></span>{% else %}<span class="icon icon-pushpin"></span>{% endif %}
+            </div>
+            <div>
+                <div class="result-title">{{ ach.title }}</div>
+                <div class="result-meta">{{ ach.user.first_name|default:ach.user.username }} · {{ ach.date|default:"未知日期" }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if results.documents %}
+    <div class="result-section anim-fade-up-3">
+        <div class="result-section-title"><span class="icon icon-folder"></span> 文档 <span class="result-count">{{ results.documents|length }}</span></div>
+        <div class="result-grid">
+            {% for doc in results.documents %}
+            <a href="{% url 'download_document' doc.id %}" class="result-card">
+                <div class="result-icon" style="background: rgba(100,116,139,0.1);"><span class="icon icon-doc"></span></div>
+                <div>
+                    <div class="result-title">{{ doc.title }}</div>
+                    <div class="result-meta">{{ doc.user.first_name|default:doc.user.username }} · {{ doc.uploaded_at|date:"Y-m-d" }}</div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if results.announcements %}
+    <div class="result-section anim-fade-up-4">
+        <div class="result-section-title"><span class="icon icon-bullhorn" style="vertical-align: middle; margin-right: 4px;"></span>公告 <span class="result-count">{{ results.announcements|length }}</span></div>
+        {% for ann in results.announcements %}
+        <div class="result-card">
+            <div class="result-icon" style="background: rgba(236,72,153,0.1);"><span class="icon icon-bullhorn"></span></div>
+            <div style="flex: 1;">
+                <div class="result-title">{{ ann.title }}</div>
+                <p style="color: var(--color-text-secondary); font-size: 0.85rem; margin: 4px 0; line-height: 1.5;">{{ ann.content|truncatechars:120 }}</p>
+                <div class="result-meta">{{ ann.author.first_name|default:ann.author.username }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if results.plans %}
+    <div class="result-section anim-fade-up-5">
+        <div class="result-section-title"><span class="icon icon-doc"></span> 计划 <span class="result-count">{{ results.plans|length }}</span></div>
+        {% for plan in results.plans %}
+        <div class="result-card">
+            <div class="result-icon" style="background: {% if plan.is_completed %}var(--color-success-light){% else %}var(--color-warning-light){% endif %};">
+                {% if plan.is_completed %}<span class="icon icon-check"></span>{% else %}<span class="icon icon-hourglass"></span>{% endif %}
+            </div>
+            <div style="flex: 1;">
+                <div class="result-title">{{ plan.content|truncatechars:60 }}</div>
+                <div class="result-meta">{{ plan.user.first_name|default:plan.user.username }} · {{ plan.date }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not results.members and not results.achievements and not results.documents and not results.announcements and not results.plans %}
+    <div class="card anim-fade-up-1">
+        <div class="empty-state">
+            <div class="empty-state-icon">🔍</div>
+            <p>没有找到与 "{{ query }}" 相关的结果</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="card anim-fade-up-1">
+    <div class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <p>请输入搜索关键词</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

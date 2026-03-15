@@ -3,14 +3,280 @@
 {% block title %}团队总览{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1 class="page-title">团队总览</h1>
-    <p class="page-subtitle">了解每位成员的工作进展与成果</p>
+<style>
+    .overview-hero {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        border-radius: var(--radius-xl);
+        padding: 40px;
+        margin-bottom: 28px;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+    .overview-hero::before {
+        content: '';
+        position: absolute;
+        top: -60%; right: -10%;
+        width: 450px; height: 450px;
+        background: radial-gradient(circle, rgba(99,102,241,0.25), transparent 70%);
+    }
+    .overview-hero::after {
+        content: '';
+        position: absolute;
+        bottom: -50%; left: 20%;
+        width: 350px; height: 350px;
+        background: radial-gradient(circle, rgba(16,185,129,0.15), transparent 70%);
+    }
+    .overview-hero > * { position: relative; z-index: 1; }
+    .overview-hero h1 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        margin-bottom: 6px;
+    }
+    .overview-hero p {
+        color: rgba(255,255,255,0.55);
+        font-size: 0.95rem;
+    }
+    .overview-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-top: 28px;
+    }
+    .ov-stat {
+        background: rgba(255,255,255,0.07);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: var(--radius-md);
+        padding: 18px 20px;
+        text-align: center;
+    }
+    .ov-stat-val {
+        font-size: 1.8rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+    }
+    .ov-stat-label {
+        font-size: 0.8rem;
+        color: rgba(255,255,255,0.5);
+        margin-top: 2px;
+    }
+
+    .overview-table-card {
+        background: var(--color-surface);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--color-border-light);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+    .overview-table-header {
+        padding: 20px 26px;
+        border-bottom: 1px solid var(--color-border-light);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .overview-table-header h2 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ov-member-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .ov-member-av {
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--color-border-light);
+    }
+    .ov-member-av-ph {
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 0.82rem;
+    }
+    .ov-progress {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .ov-progress-bar {
+        width: 80px; height: 7px;
+        background: var(--color-bg-alt);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .ov-progress-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .ach-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 16px;
+        padding: 20px 24px;
+    }
+    .ach-card {
+        border: 1px solid var(--color-border-light);
+        border-radius: var(--radius-md);
+        padding: 18px 20px;
+        transition: all 0.25s ease;
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+    }
+    .ach-card:hover {
+        border-color: rgba(99,102,241,0.2);
+        box-shadow: var(--shadow-sm);
+        transform: translateY(-2px);
+    }
+    .ach-icon {
+        width: 40px; height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+    .ach-title {
+        font-weight: 600;
+        font-size: 0.93rem;
+        color: var(--color-text-primary);
+        margin-bottom: 4px;
+    }
+    .ach-meta {
+        font-size: 0.8rem;
+        color: var(--color-text-tertiary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .plan-timeline {
+        padding: 20px 24px;
+    }
+    .tl-item {
+        display: flex;
+        gap: 16px;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--color-border-light);
+    }
+    .tl-item:last-child { border-bottom: none; }
+    .tl-avatar {
+        width: 34px; height: 34px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .tl-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+    .tl-avatar-ph {
+        width: 100%; height: 100%;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 0.75rem;
+    }
+
+    .export-bar {
+        background: var(--color-surface);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--color-border-light);
+        padding: 20px 26px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: var(--shadow-sm);
+    }
+    .export-bar h3 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    @media (max-width: 900px) {
+        .overview-stats { grid-template-columns: repeat(2, 1fr); }
+        .overview-hero { padding: 28px 24px; }
+        .ach-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+        .overview-stats { grid-template-columns: 1fr; }
+    }
+</style>
+
+<!-- Hero -->
+<div class="overview-hero anim-fade-up">
+    <h1>团队总览</h1>
+    <p>了解每位成员的工作进展与研究成果</p>
+
+    {% if member_data %}
+    <div class="overview-stats">
+        <div class="ov-stat">
+            <div class="ov-stat-val">{{ member_data|length }}</div>
+            <div class="ov-stat-label">团队成员</div>
+        </div>
+        <div class="ov-stat">
+            <div class="ov-stat-val" id="totalPlans">0</div>
+            <div class="ov-stat-label">计划总数</div>
+        </div>
+        <div class="ov-stat">
+            <div class="ov-stat-val" id="totalCompleted">0</div>
+            <div class="ov-stat-label">已完成</div>
+        </div>
+        <div class="ov-stat">
+            <div class="ov-stat-val" id="avgRate">0%</div>
+            <div class="ov-stat-label">平均完成率</div>
+        </div>
+    </div>
+    <script>
+    (function(){
+        var data = [{% for d in member_data %}{t:{{d.total_count}},c:{{d.completed_count}},r:{{d.completion_rate|floatformat:0}}},{% endfor %}];
+        var tp=0,tc=0,tr=0;
+        data.forEach(function(d){tp+=d.t;tc+=d.c;tr+=d.r;});
+        function anim(el,target,suffix){
+            var s=0,dur=800,start=null;
+            function step(ts){
+                if(!start)start=ts;
+                var p=Math.min((ts-start)/dur,1);
+                p=1-Math.pow(1-p,3);
+                el.textContent=Math.round(s+(target-s)*p)+(suffix||'');
+                if(p<1)requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+        anim(document.getElementById('totalPlans'),tp);
+        anim(document.getElementById('totalCompleted'),tc);
+        anim(document.getElementById('avgRate'),data.length?Math.round(tr/data.length):0,'%');
+    })();
+    </script>
+    {% endif %}
 </div>
 
-<div class="card">
-    <div class="card-header">
-        <h2 class="card-title">成员工作概览</h2>
+<!-- Member Table -->
+<div class="overview-table-card anim-fade-up-1">
+    <div class="overview-table-header">
+        <h2><span class="icon icon-users" style="vertical-align: middle; margin-right: 4px;"></span>成员工作概览</h2>
     </div>
     {% if member_data %}
     <div class="table-container">
@@ -19,7 +285,7 @@
                 <tr>
                     <th>成员</th>
                     <th>研究课题</th>
-                    <th>计划总数</th>
+                    <th>计划</th>
                     <th>已完成</th>
                     <th>完成率</th>
                     <th>成果</th>
@@ -29,35 +295,31 @@
                 {% for data in member_data %}
                 <tr>
                     <td>
-                        <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="ov-member-cell">
                             {% if data.profile.avatar %}
-                            <img src="{{ data.profile.avatar.url }}" alt="" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">
+                            <img src="{{ data.profile.avatar.url }}" alt="" class="ov-member-av">
                             {% else %}
-                            <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.875rem;">
-                                {{ data.user.username|first|upper }}
-                            </div>
+                            <div class="ov-member-av-ph">{{ data.user.username|first|upper }}</div>
                             {% endif %}
-                            <div>
-                                <a href="{% url 'user_profile' data.user.username %}" class="link" style="font-weight: 600;">{{ data.user.first_name|default:data.user.username }}</a>
-                            </div>
+                            <a href="{% url 'user_profile' data.user.username %}" class="link" style="font-weight: 600;">{{ data.user.first_name|default:data.user.username }}</a>
                         </div>
                     </td>
-                    <td style="color: var(--color-text-secondary);">{{ data.profile.research_topic|truncatechars:30 }}</td>
+                    <td style="color: var(--color-text-secondary); font-size: 0.88rem;">{{ data.profile.research_topic|truncatechars:25|default:"—" }}</td>
                     <td><strong>{{ data.total_count }}</strong></td>
                     <td><strong>{{ data.completed_count }}</strong></td>
                     <td>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <div style="width: 60px; height: 6px; background: var(--color-border); border-radius: 3px; overflow: hidden;">
-                                <div style="width: {{ data.completion_rate }}%; height: 100%; background: {% if data.completion_rate >= 80 %}var(--color-success){% elif data.completion_rate >= 50 %}var(--color-warning){% else %}var(--color-danger){% endif %};"></div>
+                        <div class="ov-progress">
+                            <div class="ov-progress-bar">
+                                <div class="ov-progress-fill" style="width: {{ data.completion_rate }}%; background: {% if data.completion_rate >= 80 %}var(--color-success){% elif data.completion_rate >= 50 %}var(--color-warning){% else %}var(--color-danger){% endif %};"></div>
                             </div>
-                            <span style="font-size: 0.8125rem; font-weight: 500;">{{ data.completion_rate|floatformat:0 }}%</span>
+                            <span style="font-size: 0.82rem; font-weight: 600; color: {% if data.completion_rate >= 80 %}var(--color-success){% elif data.completion_rate >= 50 %}var(--color-warning){% else %}var(--color-danger){% endif %};">{{ data.completion_rate|floatformat:0 }}%</span>
                         </div>
                     </td>
                     <td>
                         {% if data.achievements %}
-                        <span class="tag tag-public">{{ data.achievements.count }} 项</span>
+                        <span class="tag tag-primary">{{ data.achievements.count }} 项</span>
                         {% else %}
-                        <span style="color: var(--color-text-tertiary);">-</span>
+                        <span style="color: var(--color-text-tertiary);">—</span>
                         {% endif %}
                     </td>
                 </tr>
@@ -67,98 +329,93 @@
     </div>
     {% else %}
     <div class="empty-state">
-        <div class="empty-state-icon">📊</div>
+        <div class="empty-state-icon"><span class="icon icon-chart" style="width: 48px; height: 48px;"></span></div>
         <p>暂无成员数据</p>
     </div>
     {% endif %}
 </div>
 
-<div class="card">
-    <div class="card-header">
-        <h2 class="card-title">实验室成果</h2>
+<!-- Achievements -->
+<div class="overview-table-card anim-fade-up-2">
+    <div class="overview-table-header">
+        <h2><span class="icon icon-trophy" style="vertical-align: middle; margin-right: 4px;"></span>实验室成果</h2>
     </div>
     {% if all_achievements %}
-    <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div class="ach-grid">
         {% for ach in all_achievements %}
-        <div class="plan-item" style="margin-bottom: 0;">
-            <div class="plan-header">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    {% if ach.user.profile.avatar %}
-                    <img src="{{ ach.user.profile.avatar.url }}" alt="" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
-                    {% else %}
-                    <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.75rem;">
-                        {{ ach.user.username|first|upper }}
-                    </div>
-                    {% endif %}
-                    <span class="tag" style="background: {% if ach.achievement_type == 'paper' %}rgba(37, 99, 235, 0.1){% elif ach.achievement_type == 'patent' %}rgba(16, 185, 129, 0.1){% elif ach.achievement_type == 'award' %}rgba(245, 158, 11, 0.1){% else %}rgba(107, 114, 128, 0.1){% endif %}; color: {% if ach.achievement_type == 'paper' %}#2563eb{% elif ach.achievement_type == 'patent' %}#10b981{% elif ach.achievement_type == 'award' %}#f59e0b{% else %}#6b7280{% endif %};">
-                        {% if ach.achievement_type == 'paper' %}📄 论文
-                        {% elif ach.achievement_type == 'patent' %}🔧 专利
-                        {% elif ach.achievement_type == 'award' %}🏆 奖项
-                        {% elif ach.achievement_type == 'project' %}📁 项目
-                        {% else %}📌 其他{% endif %}
-                    </span>
-                    <span style="font-weight: 600;">{{ ach.title }}</span>
-                </div>
-                <span class="plan-date">{{ ach.user.first_name|default:ach.user.username }}</span>
+        <div class="ach-card">
+            <div class="ach-icon" style="background: {% if ach.achievement_type == 'paper' %}rgba(37,99,235,0.1){% elif ach.achievement_type == 'patent' %}rgba(16,185,129,0.1){% elif ach.achievement_type == 'award' %}rgba(245,158,11,0.1){% else %}rgba(100,116,139,0.1){% endif %};">
+                {% if ach.achievement_type == 'paper' %}<span class="icon icon-paper"></span>{% elif ach.achievement_type == 'patent' %}<span class="icon icon-patent"></span>{% elif ach.achievement_type == 'award' %}<span class="icon icon-trophy"></span>{% elif ach.achievement_type == 'project' %}<span class="icon icon-folder"></span>{% else %}<span class="icon icon-pin"></span>{% endif %}
             </div>
-            {% if ach.description %}
-            <p style="color: var(--color-text-secondary); margin: 8px 0 8px 44px;">{{ ach.description }}</p>
-            {% endif %}
-            <div style="margin-left: 44px; display: flex; gap: 16px; align-items: center;">
-                {% if ach.link %}
-                <a href="{{ ach.link }}" target="_blank" class="link">查看链接</a>
+            <div style="flex: 1; min-width: 0;">
+                <div class="ach-title">{{ ach.title }}</div>
+                {% if ach.description %}
+                <p style="font-size: 0.84rem; color: var(--color-text-secondary); margin-bottom: 6px; line-height: 1.5;">{{ ach.description|truncatechars:80 }}</p>
                 {% endif %}
-                {% if ach.file %}
-                <a href="{{ ach.file.url }}" class="link" download>下载附件</a>
-                {% endif %}
-                {% if ach.date %}
-                <span class="plan-date">{{ ach.date|date:"Y-m-d" }}</span>
-                {% endif %}
+                <div class="ach-meta">
+                    <span>{{ ach.user.first_name|default:ach.user.username }}</span>
+                    {% if ach.date %}<span>{{ ach.date|date:"Y-m-d" }}</span>{% endif %}
+                    {% if ach.link %}<a href="{{ ach.link }}" target="_blank" class="link" style="font-size: 0.8rem;">链接 ↗</a>{% endif %}
+                    {% if ach.file %}<a href="{{ ach.file.url }}" class="link" style="font-size: 0.8rem;" download>附件 ↓</a>{% endif %}
+                </div>
             </div>
         </div>
         {% endfor %}
     </div>
     {% else %}
     <div class="empty-state">
-        <div class="empty-state-icon">🏆</div>
+        <div class="empty-state-icon"><span class="icon icon-trophy" style="width: 48px; height: 48px;"></span></div>
         <p>暂无成果，快去添加吧！</p>
     </div>
     {% endif %}
 </div>
 
-<div class="card">
-    <div class="card-header">
-        <h2 class="card-title">最新工作计划</h2>
+<!-- Recent Plans -->
+<div class="overview-table-card anim-fade-up-3">
+    <div class="overview-table-header">
+        <h2><span class="icon icon-clipboard" style="vertical-align: middle; margin-right: 4px;"></span>最新工作计划</h2>
     </div>
     {% if all_plans %}
-    <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div class="plan-timeline">
         {% for plan in all_plans %}
-        <div class="plan-item" style="margin-bottom: 0;">
-            <div class="plan-header">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    {% if plan.user.profile.avatar %}
-                    <img src="{{ plan.user.profile.avatar.url }}" alt="" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
-                    {% else %}
-                    <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.75rem;">
-                        {{ plan.user.username|first|upper }}
-                    </div>
-                    {% endif %}
-                    <span class="plan-user">{{ plan.user.first_name|default:plan.user.username }}</span>
-                    <span class="plan-date">{{ plan.date }}</span>
-                </div>
-                <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
-                    {% if plan.is_completed %}✓ 已完成{% else %}进行中{% endif %}
-                </span>
+        <div class="tl-item">
+            <div class="tl-avatar">
+                {% if plan.user.profile.avatar %}
+                <img src="{{ plan.user.profile.avatar.url }}" alt="">
+                {% else %}
+                <div class="tl-avatar-ph">{{ plan.user.username|first|upper }}</div>
+                {% endif %}
             </div>
-            <p class="plan-content" style="margin-left: 44px;">{{ plan.content }}</p>
+            <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-weight: 600; font-size: 0.9rem; color: var(--color-accent);">{{ plan.user.first_name|default:plan.user.username }}</span>
+                        <span class="plan-date">{{ plan.date }}</span>
+                    </div>
+                    <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
+                        {% if plan.is_completed %}✓ 已完成{% else %}进行中{% endif %}
+                    </span>
+                </div>
+                <p style="color: var(--color-text-primary); font-size: 0.9rem; line-height: 1.6;">{{ plan.content }}</p>
+            </div>
         </div>
         {% endfor %}
     </div>
     {% else %}
     <div class="empty-state">
-        <div class="empty-state-icon">📋</div>
-        <p>暂无计划</p>
+        <div class="empty-state-icon"><span class="icon icon-clipboard" style="width: 48px; height: 48px;"></span></div>
+        <p>暂无工作计划</p>
     </div>
     {% endif %}
+</div>
+
+<!-- Export -->
+<div class="export-bar anim-fade-up-4">
+    <h3>📥 导出数据</h3>
+    <div style="display: flex; gap: 10px;">
+        <a href="{% url 'export_data' %}?type=achievements" class="btn btn-secondary btn-sm">导出成果</a>
+        <a href="{% url 'export_data' %}?type=plans" class="btn btn-secondary btn-sm">导出计划</a>
+        <a href="{% url 'export_data' %}?type=members" class="btn btn-secondary btn-sm">导出成员</a>
+    </div>
 </div>
 {% endblock %}

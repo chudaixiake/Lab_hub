@@ -4,6 +4,10 @@ Django settings for lab_hub_project project.
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -51,6 +55,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'lab_management.context_processors.user_profile',
+                'lab_management.context_processors.unread_messages',
             ],
         },
     },
@@ -102,3 +108,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/my/'
 LOGOUT_REDIRECT_URL = '/'
+
+# 腾讯云 AI 配置（从环境变量读取）
+TENCENT_AI_SECRET_ID = os.getenv('TENCENT_AI_SECRET_ID')
+TENCENT_AI_SECRET_KEY = os.getenv('TENCENT_AI_SECRET_KEY')
+TENCENT_AI_ENDPOINT = os.getenv('TENCENT_AI_ENDPOINT', 'https://hunyuan.tencentcloudapi.com')
+TENCENT_AI_VERSION = os.getenv('TENCENT_AI_VERSION', '2023-09-01')
+TENCENT_AI_MODEL = os.getenv('TENCENT_AI_MODEL', 'hunyuan-lite')

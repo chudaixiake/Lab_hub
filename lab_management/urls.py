@@ -15,6 +15,7 @@ urlpatterns = [
     path('logout/', views.user_logout, name='logout'),
     path('add/document/', views.add_document, name='add_document'),
     path('download/document/<int:doc_id>/', views.download_document, name='download_document'),
+    path('preview/document/<int:doc_id>/', views.preview_document, name='preview_document'),
     path('delete/document/<int:doc_id>/', views.delete_document, name='delete_document'),
     path('add/plan/', views.add_plan, name='add_plan'),
     path('edit/plan/<int:plan_id>/', views.edit_plan, name='edit_plan'),
@@ -29,4 +30,8 @@ urlpatterns = [
     path('send_message/<str:username>/', views.send_message, name='send_message'),
     path('delete_message/<int:msg_id>/', views.delete_message, name='delete_message'),
     path('delete/user/<int:user_id>/', views.delete_user, name='delete_user'),
+    path('ai/chat/', views.ai_chat, name='ai_chat'),
+    path('search/', views.search, name='search'),
+    path('export/', views.export_data, name='export_data'),
+    path('resume/', views.resume_builder, name='resume_builder'),
 ]

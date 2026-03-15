@@ -1,65 +1,230 @@
 {% extends 'base.html' %}
 
-{% block title %}成员详情 - {{ profile_user.username }}{% endblock %}
+{% block title %}{{ profile_user.first_name|default:profile_user.username }} 的主页{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div style="display: flex; gap: 32px; align-items: flex-start;">
-        <div style="flex-shrink: 0;">
-            {% if profile.avatar %}
-            <img src="{{ profile.avatar.url }}" alt="头像" style="width: 140px; height: 140px; border-radius: 50%; object-fit: cover; box-shadow: var(--shadow-lg);">
-            {% else %}
-            <div class="member-avatar-placeholder" style="width: 140px; height: 140px; font-size: 3rem;">
-                {{ profile_user.username|first|upper }}
-            </div>
-            {% endif %}
-        </div>
-        <div style="flex: 1;">
-            <h2 style="margin-bottom: 8px; font-size: 1.75rem; font-weight: 700;">{{ profile_user.first_name|default:profile_user.username }}</h2>
-            <p style="color: var(--color-accent); margin-bottom: 16px; font-size: 1.125rem; font-weight: 500;">{{ profile.research_topic }}</p>
+<style>
+    .up-hero {
+        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 100%);
+        border-radius: var(--radius-xl);
+        padding: 40px;
+        margin-bottom: 28px;
+        position: relative;
+        overflow: hidden;
+        color: white;
+    }
+    .up-hero::before {
+        content: '';
+        position: absolute;
+        top: -50%; right: -10%;
+        width: 400px; height: 400px;
+        background: radial-gradient(circle, rgba(139,92,246,0.25), transparent 70%);
+    }
+    .up-hero > * { position: relative; z-index: 1; }
+    .up-hero-content {
+        display: flex;
+        gap: 28px;
+        align-items: center;
+    }
+    .up-avatar {
+        width: 110px; height: 110px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid rgba(255,255,255,0.25);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        flex-shrink: 0;
+    }
+    .up-avatar-ph {
+        width: 110px; height: 110px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.12);
+        backdrop-filter: blur(10px);
+        border: 4px solid rgba(255,255,255,0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.8rem;
+        font-weight: 700;
+        color: white;
+        flex-shrink: 0;
+    }
+    .up-name {
+        font-size: 1.8rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin-bottom: 4px;
+    }
+    .up-topic {
+        color: rgba(255,255,255,0.6);
+        font-size: 1rem;
+        margin-bottom: 12px;
+    }
+    .up-bio {
+        color: rgba(255,255,255,0.5);
+        font-size: 0.9rem;
+        line-height: 1.6;
+        margin-bottom: 16px;
+        max-width: 500px;
+    }
+    .up-links {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .up-link-btn {
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.12);
+        color: rgba(255,255,255,0.85);
+        padding: 7px 16px;
+        border-radius: 20px;
+        font-size: 0.82rem;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        backdrop-filter: blur(4px);
+    }
+    .up-link-btn:hover {
+        background: rgba(255,255,255,0.2);
+        color: white;
+    }
+
+    .up-section {
+        background: var(--color-surface);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--color-border-light);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+    .up-section-header {
+        padding: 20px 26px;
+        border-bottom: 1px solid var(--color-border-light);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .up-section-header h3 {
+        font-size: 1.05rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .up-section-body { padding: 22px 26px; }
+
+    .up-ach-item {
+        border: 1px solid var(--color-border-light);
+        border-radius: var(--radius-md);
+        padding: 16px 18px;
+        margin-bottom: 12px;
+        transition: all 0.25s ease;
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+    }
+    .up-ach-item:hover {
+        border-color: rgba(99,102,241,0.2);
+        box-shadow: var(--shadow-sm);
+    }
+    .up-ach-item:last-child { margin-bottom: 0; }
+    .up-ach-icon {
+        width: 38px; height: 38px;
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 17px;
+        flex-shrink: 0;
+    }
+
+    .msg-wall-item {
+        display: flex;
+        gap: 14px;
+        padding: 16px 0;
+        border-bottom: 1px solid var(--color-border-light);
+    }
+    .msg-wall-item:last-child { border-bottom: none; }
+    .mw-avatar {
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .mw-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+    .mw-avatar-ph {
+        width: 100%; height: 100%;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 0.75rem;
+    }
+
+    @media (max-width: 768px) {
+        .up-hero { padding: 28px 24px; }
+        .up-hero-content { flex-direction: column; text-align: center; }
+        .up-links { justify-content: center; }
+    }
+</style>
+
+<!-- Profile Hero -->
+<div class="up-hero anim-fade-up">
+    <div class="up-hero-content">
+        {% if profile.avatar %}
+        <img src="{{ profile.avatar.url }}" alt="头像" class="up-avatar">
+        {% else %}
+        <div class="up-avatar-ph">{{ profile_user.username|first|upper }}</div>
+        {% endif %}
+        <div>
+            <div class="up-name">{{ profile_user.first_name|default:profile_user.username }}</div>
+            <div class="up-topic">{{ profile.research_topic|default:"暂无课题" }}</div>
             {% if profile.bio %}
-            <p style="color: var(--color-text-secondary); margin-bottom: 16px; line-height: 1.7;">{{ profile.bio }}</p>
+            <div class="up-bio">{{ profile.bio }}</div>
             {% endif %}
-            {% if profile.personal_page %}
-            <a href="{{ profile.personal_page }}" target="_blank" class="btn btn-secondary btn-sm">个人主页</a>
-            {% endif %}
+            <div class="up-links">
+                {% if profile.email %}
+                <a href="mailto:{{ profile.email }}" class="up-link-btn"><span class="icon icon-mail" style="vertical-align: middle; margin-right: 4px;"></span>{{ profile.email }}</a>
+                {% endif %}
+                {% if profile.phone %}
+                <a href="tel:{{ profile.phone }}" class="up-link-btn"><span class="icon icon-phone" style="vertical-align: middle; margin-right: 4px;"></span>{{ profile.phone }}</a>
+                {% endif %}
+                {% if profile.personal_page %}
+                <a href="{{ profile.personal_page }}" target="_blank" class="up-link-btn">🌐 个人主页</a>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
 
+<!-- Achievements -->
 {% if achievements %}
-<div class="card">
-    <div class="card-header">
-        <h3 class="card-title">研究成果</h3>
+<div class="up-section anim-fade-up-1">
+    <div class="up-section-header">
+        <h3><span class="icon icon-trophy" style="vertical-align: middle; margin-right: 4px;"></span>研究成果</h3>
+        <span class="tag tag-primary">{{ achievements|length }} 项</span>
     </div>
-    <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div class="up-section-body">
         {% for ach in achievements %}
-        <div class="plan-item" style="margin-bottom: 0;">
-            <div class="plan-header">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <span class="tag" style="background: {% if ach.achievement_type == 'paper' %}rgba(37, 99, 235, 0.1){% elif ach.achievement_type == 'patent' %}rgba(16, 185, 129, 0.1){% elif ach.achievement_type == 'award' %}rgba(245, 158, 11, 0.1){% else %}rgba(107, 114, 128, 0.1){% endif %}; color: {% if ach.achievement_type == 'paper' %}#2563eb{% elif ach.achievement_type == 'patent' %}#10b981{% elif ach.achievement_type == 'award' %}#f59e0b{% else %}#6b7280{% endif %};">
-                        {% if ach.achievement_type == 'paper' %}📄 论文
-                        {% elif ach.achievement_type == 'patent' %}🔧 专利
-                        {% elif ach.achievement_type == 'award' %}🏆 奖项
-                        {% elif ach.achievement_type == 'project' %}📁 项目
-                        {% else %}📌 其他{% endif %}
-                    </span>
-                    <span style="font-weight: 600;">{{ ach.title }}</span>
-                </div>
-                {% if ach.date %}
-                <span class="plan-date">{{ ach.date|date:"Y-m-d" }}</span>
-                {% endif %}
+        <div class="up-ach-item">
+            <div class="up-ach-icon" style="background: {% if ach.achievement_type == 'paper' %}rgba(37,99,235,0.1){% elif ach.achievement_type == 'patent' %}rgba(16,185,129,0.1){% elif ach.achievement_type == 'award' %}rgba(245,158,11,0.1){% else %}rgba(100,116,139,0.1){% endif %};">
+                {% if ach.achievement_type == 'paper' %}<span class="icon icon-paper"></span>{% elif ach.achievement_type == 'patent' %}<span class="icon icon-patent"></span>{% elif ach.achievement_type == 'award' %}<span class="icon icon-trophy"></span>{% elif ach.achievement_type == 'project' %}<span class="icon icon-folder"></span>{% else %}<span class="icon icon-pin"></span>{% endif %}
             </div>
-            {% if ach.description %}
-            <p style="color: var(--color-text-secondary); margin: 8px 0;">{{ ach.description }}</p>
-            {% endif %}
-            <div style="display: flex; gap: 16px;">
-                {% if ach.link %}
-                <a href="{{ ach.link }}" target="_blank" class="link">查看链接</a>
+            <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 4px;">
+                    <span style="font-weight: 600; font-size: 0.93rem;">{{ ach.title }}</span>
+                    {% if ach.date %}<span class="plan-date">{{ ach.date|date:"Y-m-d" }}</span>{% endif %}
+                </div>
+                {% if ach.description %}
+                <p style="color: var(--color-text-secondary); font-size: 0.85rem; margin-bottom: 8px; line-height: 1.5;">{{ ach.description }}</p>
                 {% endif %}
-                {% if ach.file %}
-                <a href="{{ ach.file.url }}" class="link" download>下载附件</a>
-                {% endif %}
+                <div style="display: flex; gap: 12px;">
+                    {% if ach.link %}<a href="{{ ach.link }}" target="_blank" class="link" style="font-size: 0.84rem;">链接 ↗</a>{% endif %}
+                    {% if ach.file %}<a href="{{ ach.file.url }}" class="link" style="font-size: 0.84rem;" download>附件 ↓</a>{% endif %}
+                </div>
             </div>
         </div>
         {% endfor %}
@@ -67,94 +232,107 @@
 </div>
 {% endif %}
 
-<div class="card">
-    <div class="card-header">
-        <h3 class="card-title">给 {{ profile_user.first_name|default:profile_user.username }} 留言</h3>
+<!-- Leave Message -->
+<div class="up-section anim-fade-up-2">
+    <div class="up-section-header">
+        <h3>✉️ 给 {{ profile_user.first_name|default:profile_user.username }} 留言</h3>
     </div>
-    <form method="post" action="{% url 'send_message' profile_user.username %}">
-        {% csrf_token %}
-        <div style="display: flex; gap: 12px;">
-            <textarea name="content" rows="3" class="form-input" placeholder="写下你的留言..." required style="flex: 1; resize: vertical;"></textarea>
-        </div>
-        <div style="margin-top: 12px; text-align: right;">
-            <button type="submit" class="btn btn-primary">发送留言</button>
-        </div>
-    </form>
+    <div class="up-section-body">
+        <form method="post" action="{% url 'send_message' profile_user.username %}">
+            {% csrf_token %}
+            <div style="display: flex; gap: 12px; align-items: flex-start;">
+                <textarea name="content" rows="3" class="form-input" placeholder="写下你想说的..." required style="flex: 1;"></textarea>
+            </div>
+            <div style="margin-top: 12px; text-align: right;">
+                <button type="submit" class="btn btn-primary">发送留言</button>
+            </div>
+        </form>
+    </div>
 </div>
 
-<div class="card">
-    <div class="card-header">
-        <h3 class="card-title">留言墙</h3>
+<!-- Message Wall -->
+<div class="up-section anim-fade-up-3">
+    <div class="up-section-header">
+        <h3>💬 留言墙</h3>
+        {% if messages_list %}<span class="tag tag-primary">{{ messages_list|length }}</span>{% endif %}
     </div>
-    {% if messages_list %}
-    <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div class="up-section-body">
+        {% if messages_list %}
         {% for msg in messages_list %}
-        <div class="plan-item" style="margin-bottom: 0;">
-            <div class="plan-header">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    {% if msg.sender.profile.avatar %}
-                    <img src="{{ msg.sender.profile.avatar.url }}" alt="" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
-                    {% else %}
-                    <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.75rem;">
-                        {{ msg.sender.username|first|upper }}
-                    </div>
-                    {% endif %}
-                    <span style="font-weight: 600;">{{ msg.sender.first_name|default:msg.sender.username }}</span>
-                    <span class="plan-date">{{ msg.created_at|date:"Y-m-d H:i" }}</span>
-                </div>
-                {% if user == msg.receiver or user == msg.sender %}
-                <a href="{% url 'delete_message' msg.id %}" class="link" style="color: var(--color-danger);" onclick="return confirm('确定要删除这条留言吗？')">删除</a>
+        <div class="msg-wall-item">
+            <div class="mw-avatar">
+                {% if msg.sender.profile.avatar %}
+                <img src="{{ msg.sender.profile.avatar.url }}" alt="">
+                {% else %}
+                <div class="mw-avatar-ph">{{ msg.sender.username|first|upper }}</div>
                 {% endif %}
             </div>
-            <p class="plan-content" style="margin-left: 44px; white-space: pre-wrap;">{{ msg.content }}</p>
+            <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span style="font-weight: 600; font-size: 0.9rem;">{{ msg.sender.first_name|default:msg.sender.username }}</span>
+                    <span class="plan-date">{{ msg.created_at|date:"Y-m-d H:i" }}</span>
+                </div>
+                <p style="color: var(--color-text-primary); font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap;">{{ msg.content }}</p>
+            </div>
+            {% if user == msg.receiver or user == msg.sender %}
+            <a href="{% url 'delete_message' msg.id %}" onclick="return confirm('确定删除？')" style="color: var(--color-danger); text-decoration: none; font-size: 0.8rem; flex-shrink: 0;">删除</a>
+            {% endif %}
         </div>
         {% endfor %}
-    </div>
-    {% else %}
-    <p style="color: var(--color-text-tertiary);">暂无留言，快来抢沙发吧！</p>
-    {% endif %}
-</div>
-
-<div class="grid grid-2">
-    <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">上传的文档</h3>
-        </div>
-        {% if documents %}
-            {% for doc in documents %}
-            <div class="plan-item">
-                <div class="plan-header">
-                    <span style="font-weight: 600;">{{ doc.title }}</span>
-                    <span class="plan-date">{{ doc.uploaded_at|date:"Y-m-d" }}</span>
-                </div>
-                <p style="color: var(--color-text-secondary); margin-bottom: 12px;">{{ doc.description|default:"无描述" }}</p>
-                <a href="{% url 'download_document' doc.id %}" class="link">下载文件</a>
-            </div>
-            {% endfor %}
         {% else %}
-        <p style="color: var(--color-text-tertiary);">暂无上传文档</p>
+        <div class="empty-state" style="padding: 32px 16px;">
+            <div class="empty-state-icon">💬</div>
+            <p>暂无留言，快来抢沙发！</p>
+        </div>
         {% endif %}
     </div>
+</div>
 
-    <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">最近计划</h3>
+<!-- Documents & Plans -->
+<div class="grid grid-2 anim-fade-up-4">
+    <div class="up-section">
+        <div class="up-section-header">
+            <h3><span class="icon icon-doc" style="vertical-align: middle; margin-right: 4px;"></span>上传的文档</h3>
         </div>
-        {% if plans %}
+        <div class="up-section-body">
+            {% if documents %}
+            {% for doc in documents %}
+            <div style="border: 1px solid var(--color-border-light); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 10px; transition: all 0.2s;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-weight: 600; font-size: 0.9rem;">{{ doc.title }}</span>
+                    <span class="plan-date">{{ doc.uploaded_at|date:"m-d" }}</span>
+                </div>
+                <p style="color: var(--color-text-secondary); font-size: 0.83rem; margin-bottom: 8px;">{{ doc.description|default:"无描述" }}</p>
+                <a href="{% url 'download_document' doc.id %}" class="link" style="font-size: 0.84rem;">下载 ↓</a>
+            </div>
+            {% endfor %}
+            {% else %}
+            <p style="color: var(--color-text-tertiary); text-align: center; padding: 20px 0;">暂无文档</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="up-section">
+        <div class="up-section-header">
+            <h3><span class="icon icon-clipboard" style="vertical-align: middle; margin-right: 4px;"></span>最近计划</h3>
+        </div>
+        <div class="up-section-body">
+            {% if plans %}
             {% for plan in plans %}
-            <div class="plan-item">
-                <div class="plan-header">
-                    <span class="plan-date">{{ plan.date }}</span>
+            <div style="border: 1px solid var(--color-border-light); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 10px; transition: all 0.2s;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span class="plan-date" style="font-size: 0.85rem;">{{ plan.date }}</span>
                     <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
                         {% if plan.is_completed %}✓ 已完成{% else %}待完成{% endif %}
                     </span>
                 </div>
-                <p class="plan-content">{{ plan.content }}</p>
+                <p style="color: var(--color-text-primary); font-size: 0.9rem; line-height: 1.6;">{{ plan.content }}</p>
             </div>
             {% endfor %}
-        {% else %}
-        <p style="color: var(--color-text-tertiary);">暂无计划</p>
-        {% endif %}
+            {% else %}
+            <p style="color: var(--color-text-tertiary); text-align: center; padding: 20px 0;">暂无计划</p>
+            {% endif %}
+        </div>
     </div>
 </div>
 {% endblock %}

@@ -1,71 +1,326 @@
 {% extends 'base.html' %}
 
-{% block title %}实验室主页 - 成员与计划{% endblock %}
+{% block title %}实验室主页{% endblock %}
 
 {% block content %}
-{% if announcements %}
-<div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
-    <h2 style="margin-bottom: 1rem;">公告</h2>
-    {% for announcement in announcements %}
-    <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: var(--radius-sm); margin-bottom: 0.5rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <strong>{% if announcement.is_pinned %}📌 {% endif %}{{ announcement.title }}</strong>
-            <span style="font-size: 0.85rem; opacity: 0.8;">{{ announcement.created_at|date:"Y-m-d" }}</span>
-        </div>
-        <p style="margin-top: 0.5rem; opacity: 0.9;">{{ announcement.content|truncatechars:100 }}</p>
+<style>
+    .hero-banner {
+        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 100%);
+        border-radius: var(--radius-xl);
+        padding: 44px 40px;
+        margin-bottom: 28px;
+        position: relative;
+        overflow: hidden;
+        color: white;
+    }
+    .hero-banner::before {
+        content: '';
+        position: absolute;
+        top: -50%; right: -20%;
+        width: 500px; height: 500px;
+        background: radial-gradient(circle, rgba(139,92,246,0.3), transparent 70%);
+        pointer-events: none;
+    }
+    .hero-banner::after {
+        content: '';
+        position: absolute;
+        bottom: -40%; left: 10%;
+        width: 400px; height: 400px;
+        background: radial-gradient(circle, rgba(99,102,241,0.2), transparent 70%);
+        pointer-events: none;
+    }
+    .hero-content { position: relative; z-index: 1; }
+    .hero-greeting {
+        font-size: 0.9rem;
+        color: rgba(255,255,255,0.65);
+        font-weight: 500;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .hero-title {
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        margin-bottom: 10px;
+        line-height: 1.2;
+    }
+    .hero-desc {
+        color: rgba(255,255,255,0.6);
+        font-size: 0.95rem;
+        max-width: 500px;
+        line-height: 1.6;
+    }
+    .hero-dots {
+        position: absolute;
+        top: 20px; right: 30px;
+        display: grid;
+        grid-template-columns: repeat(5, 8px);
+        gap: 8px;
+        opacity: 0.15;
+        z-index: 1;
+    }
+    .hero-dots span {
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: white;
+    }
+
+    .quick-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 28px;
+    }
+
+    .announce-card {
+        background: var(--color-surface);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--color-border-light);
+        overflow: hidden;
+        margin-bottom: 28px;
+        box-shadow: var(--shadow-sm);
+    }
+    .announce-header {
+        background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(139,92,246,0.06));
+        padding: 18px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--color-border-light);
+    }
+    .announce-header h2 {
+        font-size: 1.05rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .announce-body { padding: 8px 12px; }
+    .announce-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 16px 12px;
+        border-radius: var(--radius-sm);
+        transition: background 0.2s ease;
+    }
+    .announce-item:hover { background: rgba(99,102,241,0.03); }
+    .announce-dot {
+        width: 10px; height: 10px;
+        border-radius: 50%;
+        background: var(--color-accent);
+        flex-shrink: 0;
+        margin-top: 6px;
+        box-shadow: 0 0 0 3px var(--color-accent-light);
+    }
+    .announce-dot.pinned { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
+    .announce-title {
+        font-weight: 600;
+        font-size: 0.93rem;
+        color: var(--color-text-primary);
+        margin-bottom: 4px;
+    }
+    .announce-preview {
+        font-size: 0.85rem;
+        color: var(--color-text-secondary);
+        line-height: 1.5;
+    }
+    .announce-date {
+        font-size: 0.78rem;
+        color: var(--color-text-tertiary);
+        white-space: nowrap;
+        margin-top: 2px;
+    }
+
+    .member-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 14px;
+        border-radius: var(--radius-sm);
+        transition: all 0.2s ease;
+        text-decoration: none;
+        color: inherit;
+    }
+    .member-row:hover {
+        background: var(--color-accent-light);
+        transform: translateX(4px);
+    }
+    .member-row-avatar {
+        width: 44px; height: 44px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--color-border-light);
+        flex-shrink: 0;
+    }
+    .member-row-placeholder {
+        width: 44px; height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 0.95rem;
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 900px) {
+        .quick-stats { grid-template-columns: repeat(2, 1fr); }
+        .hero-banner { padding: 32px 24px; }
+        .hero-title { font-size: 1.5rem; }
+    }
+    @media (max-width: 640px) {
+        .quick-stats { grid-template-columns: 1fr; }
+    }
+</style>
+
+<!-- Hero Banner -->
+<div class="hero-banner anim-fade-up">
+    <div class="hero-dots">
+        {% for i in "123456789012345" %}<span></span>{% endfor %}
     </div>
-    {% endfor %}
-    <a href="{% url 'announcement_list' %}" style="color: white; opacity: 0.8; text-decoration: none;">查看全部公告 →</a>
+    <div class="hero-content">
+        <p class="hero-greeting" id="heroGreeting"></p>
+        <h1 class="hero-title">实验室管理系统</h1>
+        <p class="hero-desc">在这里查看团队动态、管理工作计划、分享研究成果</p>
+    </div>
+</div>
+
+<script>
+(function(){
+    var h = new Date().getHours();
+    var e, t;
+    if(h>=5&&h<9){e='🌅';t='早上好';}
+    else if(h>=9&&h<12){e='☀️';t='上午好';}
+    else if(h>=12&&h<14){e='🌤️';t='中午好';}
+    else if(h>=14&&h<18){e='🌇';t='下午好';}
+    else if(h>=18&&h<22){e='🌙';t='晚上好';}
+    else{e='🌌';t='夜深了';}
+    document.getElementById('heroGreeting').innerHTML = '<span style="font-size:1.1rem">' + e + '</span> ' + t + '{% if user.is_authenticated %}，{{ user.first_name|default:user.username }}{% endif %}';
+})();
+</script>
+
+<!-- Quick Stats -->
+<div class="quick-stats anim-fade-up-1">
+    <a href="{% url 'member_list' %}" class="stat-card" style="text-decoration: none; color: inherit; cursor: pointer;">
+        <div class="stat-icon" style="background: var(--color-accent-light); color: var(--color-accent);"><span class="icon icon-team"></span></div>
+        <div class="stat-info">
+            <div class="stat-value">{{ members|length }}</div>
+            <div class="stat-label">团队成员</div>
+        </div>
+    </a>
+    <a href="{% url 'plan_list' %}" class="stat-card" style="text-decoration: none; color: inherit; cursor: pointer;">
+        <div class="stat-icon" style="background: var(--color-success-light); color: var(--color-success);"><span class="icon icon-doc"></span></div>
+        <div class="stat-info">
+            <div class="stat-value">{{ recent_plans|length }}</div>
+            <div class="stat-label">近期计划</div>
+        </div>
+    </a>
+    <a href="{% url 'document_list' %}" class="stat-card" style="text-decoration: none; color: inherit; cursor: pointer;">
+        <div class="stat-icon" style="background: var(--color-warning-light); color: var(--color-warning);"><span class="icon icon-folder"></span></div>
+        <div class="stat-info">
+            <div class="stat-value">{{ document_count|default:"0" }}</div>
+            <div class="stat-label">共享文档</div>
+        </div>
+    </a>
+    <a href="{% url 'announcement_list' %}" class="stat-card" style="text-decoration: none; color: inherit; cursor: pointer;">
+        <div class="stat-icon" style="background: rgba(236,72,153,0.1); color: #ec4899;"><span class="icon icon-bell"></span></div>
+        <div class="stat-info">
+            <div class="stat-value">{{ announcement_count|default:"0" }}</div>
+            <div class="stat-label">公告通知</div>
+        </div>
+    </a>
+</div>
+
+<!-- Announcements -->
+{% if announcements %}
+<div class="announce-card anim-fade-up-2">
+    <div class="announce-header">
+        <h2><span class="icon icon-bullhorn" style="vertical-align: middle; margin-right: 4px;"></span>最新公告</h2>
+        {% if announcement_count > 3 %}
+        <a href="{% url 'announcement_list' %}" class="link" style="font-size: 0.85rem;">查看全部 →</a>
+        {% endif %}
+    </div>
+    <div class="announce-body">
+        {% for announcement in announcements|slice:":3" %}
+        <div class="announce-item">
+            <div class="announce-dot {% if announcement.is_pinned %}pinned{% endif %}"></div>
+            <div style="flex: 1; min-width: 0;">
+                <div class="announce-title">
+                    {% if announcement.is_pinned %}<span class="icon icon-pushpin" style="vertical-align: middle; margin-right: 4px;"></span>{{ announcement.title }}{% endif %}
+                </div>
+                <div class="announce-preview">{{ announcement.content|truncatechars:100 }}</div>
+            </div>
+            <div class="announce-date">{{ announcement.created_at|date:"m-d" }}</div>
+        </div>
+        {% endfor %}
+    </div>
 </div>
 {% endif %}
 
-<div class="grid grid-2">
+<!-- Main Grid: Members + Plans -->
+<div class="grid grid-2 anim-fade-up-3">
     <div class="card">
         <div class="card-header">
-            <h2 class="card-title">成员</h2>
-            <a href="{% url 'member_list' %}" class="link">查看全部</a>
+            <h2 class="card-title">
+                <span class="card-title-icon" style="background: var(--color-accent-light);"><span class="icon icon-team"></span></span>
+                团队成员
+            </h2>
+            <a href="{% url 'member_list' %}" class="link" style="font-size: 0.85rem;">全部 →</a>
         </div>
         {% if members %}
             {% for member in members %}
-            <a href="{% url 'user_profile' member.user.username %}" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 16px; padding: 12px; border-radius: var(--radius-sm); margin-bottom: 8px; transition: background var(--transition-fast);">
+            <a href="{% url 'user_profile' member.user.username %}" class="member-row">
                 {% if member.avatar %}
-                <img src="{{ member.avatar.url }}" alt="{{ member.user.username }}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
+                <img src="{{ member.avatar.url }}" alt="{{ member.user.username }}" class="member-row-avatar">
                 {% else %}
-                <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
-                    {{ member.user.username|first|upper }}
-                </div>
+                <div class="member-row-placeholder">{{ member.user.username|first|upper }}</div>
                 {% endif %}
                 <div style="flex: 1; min-width: 0;">
-                    <div style="font-weight: 600; color: var(--color-text-primary);">{{ member.user.first_name|default:member.user.username }}</div>
-                    <div style="font-size: 0.875rem; color: var(--color-text-secondary);">{{ member.research_topic|truncatechars:40 }}</div>
+                    <div style="font-weight: 600; font-size: 0.93rem; color: var(--color-text-primary);">{{ member.user.first_name|default:member.user.username }}</div>
+                    <div style="font-size: 0.82rem; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ member.research_topic|truncatechars:35|default:"暂无课题" }}</div>
                 </div>
             </a>
             {% endfor %}
         {% else %}
-            <p style="color: var(--color-text-tertiary);">暂无成员信息</p>
+            <div class="empty-state" style="padding: 32px 16px;">
+                <div class="empty-state-icon"><span class="icon icon-team"></span></div>
+                <p>暂无成员</p>
+            </div>
         {% endif %}
     </div>
 
     <div class="card">
         <div class="card-header">
-            <h2 class="card-title">最新计划</h2>
-            <a href="{% url 'plan_list' %}" class="link">查看全部</a>
+            <h2 class="card-title">
+                <span class="card-title-icon" style="background: var(--color-success-light);"><span class="icon icon-doc"></span></span>
+                最新计划
+            </h2>
+            <a href="{% url 'plan_list' %}" class="link" style="font-size: 0.85rem;">全部 →</a>
         </div>
         {% if recent_plans %}
             {% for plan in recent_plans %}
             <div class="plan-item">
                 <div class="plan-header">
-                    <span class="plan-user">{{ plan.user.username }}</span>
+                    <span class="plan-user">{{ plan.user.first_name|default:plan.user.username }}</span>
                     <span class="plan-date">{{ plan.date }}</span>
                 </div>
                 <div class="plan-content">{{ plan.content|truncatechars:80 }}</div>
                 <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
-                    {% if plan.is_completed %}✓ 已完成{% else %}⏳ 进行中{% endif %}
+                    {% if plan.is_completed %}<span class="icon icon-check" style="vertical-align: middle; margin-right: 4px;"></span>已完成{% else %}<span class="icon icon-hourglass" style="vertical-align: middle; margin-right: 4px;"></span>进行中{% endif %}
                 </span>
             </div>
             {% endfor %}
         {% else %}
-            <p style="color: var(--color-text-tertiary);">暂无计划，<a href="{% url 'my_page' %}" class="link">添加你的第一个计划</a></p>
+            <div class="empty-state" style="padding: 32px 16px;">
+                <div class="empty-state-icon"><span class="icon icon-doc"></span></div>
+                <p>暂无计划</p>
+                <a href="{% url 'my_page' %}" class="link" style="margin-top: 8px; display: inline-block;">添加第一个计划 →</a>
+            </div>
         {% endif %}
     </div>
 </div>

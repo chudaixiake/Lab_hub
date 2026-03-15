@@ -1,30 +1,231 @@
 {% extends 'base.html' %}
 
-{% block title %}日常计划{% endblock %}
+{% block title %}工作计划{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1 class="page-title">日常计划</h1>
-    <p class="page-subtitle">团队成员的每日工作计划</p>
+<style>
+    .plan-page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 28px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+    .view-toggle {
+        display: flex;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border-light);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+    }
+    .view-toggle a {
+        padding: 9px 20px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        text-decoration: none;
+        color: var(--color-text-secondary);
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border-right: 1px solid var(--color-border-light);
+    }
+    .view-toggle a:last-child { border-right: none; }
+    .view-toggle a:hover { color: var(--color-text-primary); background: var(--color-surface-hover); }
+    .view-toggle a.active {
+        background: var(--color-accent);
+        color: white;
+    }
+
+    /* Calendar */
+    .cal-wrap {
+        background: var(--color-surface);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--color-border-light);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+    }
+    .cal-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--color-border-light);
+    }
+    .cal-nav h2 {
+        font-size: 1.15rem;
+        font-weight: 700;
+    }
+    .cal-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        border-top: 1px solid var(--color-border-light);
+    }
+    .cal-day-header {
+        padding: 12px;
+        text-align: center;
+        font-weight: 700;
+        font-size: 0.78rem;
+        color: var(--color-text-tertiary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: var(--color-bg);
+        border-bottom: 1px solid var(--color-border-light);
+        border-right: 1px solid var(--color-border-light);
+    }
+    .cal-day-header:nth-child(7n) { border-right: none; }
+    .cal-day {
+        min-height: 110px;
+        padding: 8px;
+        border-bottom: 1px solid var(--color-border-light);
+        border-right: 1px solid var(--color-border-light);
+        transition: background 0.15s ease;
+        position: relative;
+    }
+    .cal-day:nth-child(7n) { border-right: none; }
+    .cal-day:hover { background: rgba(99,102,241,0.02); }
+    .cal-day.today {
+        background: rgba(99,102,241,0.04);
+    }
+    .cal-day.today .day-num {
+        background: var(--color-accent);
+        color: white;
+        width: 26px; height: 26px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .day-num {
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: var(--color-text-primary);
+        margin-bottom: 4px;
+        display: inline-block;
+    }
+    .day-plans { display: flex; flex-direction: column; gap: 3px; }
+    .day-plan {
+        font-size: 0.72rem;
+        padding: 3px 6px;
+        border-radius: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: 500;
+        background: rgba(99,102,241,0.08);
+        color: var(--color-accent);
+        cursor: default;
+    }
+    .day-plan.completed {
+        background: var(--color-success-light);
+        color: var(--color-success);
+    }
+    .day-more {
+        font-size: 0.7rem;
+        color: var(--color-text-tertiary);
+        text-align: center;
+        padding-top: 2px;
+    }
+
+    /* List view */
+    .plan-list-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .plan-list-item {
+        background: var(--color-surface);
+        border-radius: var(--radius-md);
+        padding: 20px 24px;
+        border: 1px solid var(--color-border-light);
+        box-shadow: var(--shadow-sm);
+        transition: all 0.25s ease;
+    }
+    .plan-list-item:hover {
+        border-color: rgba(99,102,241,0.2);
+        box-shadow: var(--shadow-md);
+        transform: translateX(4px);
+    }
+
+    @media (max-width: 768px) {
+        .cal-day { min-height: 70px; padding: 4px; }
+        .day-plan { font-size: 0.65rem; }
+        .day-num { font-size: 0.75rem; }
+    }
+</style>
+
+<div class="plan-page-header anim-fade-up">
+    <div>
+        <h1 class="page-title">工作计划</h1>
+        <p class="page-subtitle">团队成员的每日工作安排</p>
+    </div>
+    <div class="view-toggle">
+        <a href="?view=calendar" class="{% if view == 'calendar' or not view %}active{% endif %}"><span class="icon icon-calendar" style="vertical-align: middle; margin-right: 4px;"></span>日历</a>
+        <a href="?view=list" class="{% if view == 'list' %}active{% endif %}"><span class="icon icon-doc" style="vertical-align: middle; margin-right: 4px;"></span>列表</a>
+    </div>
 </div>
 
-{% for plan in plans %}
-<div class="plan-item">
-    <div class="plan-header">
-        <span class="plan-user">{{ plan.user.username }}</span>
-        <span class="plan-date">{{ plan.date }}</span>
+{% if view == 'calendar' or not view %}
+<div class="cal-wrap anim-fade-up-1">
+    <div class="cal-nav">
+        <a href="?view=calendar&month={{ prev_month }}" class="btn btn-ghost btn-sm">◀ 上月</a>
+        <h2>{{ year }}年 {{ month }}月</h2>
+        <a href="?view=calendar&month={{ next_month }}" class="btn btn-ghost btn-sm">下月 ▶</a>
     </div>
-    <div class="plan-content">{{ plan.content }}</div>
-    <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
-        {% if plan.is_completed %}✓ 已完成{% else %}⏳ 进行中{% endif %}
-    </span>
-</div>
-{% empty %}
-<div class="card">
-    <div class="empty-state">
-        <div class="empty-state-icon">📋</div>
-        <p>暂无计划，请前往<a href="{% url 'my_page' %}" class="link">我的主页</a>添加。</p>
+    <div class="cal-grid">
+        <div class="cal-day-header">日</div>
+        <div class="cal-day-header">一</div>
+        <div class="cal-day-header">二</div>
+        <div class="cal-day-header">三</div>
+        <div class="cal-day-header">四</div>
+        <div class="cal-day-header">五</div>
+        <div class="cal-day-header">六</div>
+
+        {% for day in calendar_days %}
+        <div class="cal-day {% if day.is_today %}today{% endif %}">
+            <div class="day-num">{{ day.day }}</div>
+            {% if day.plans %}
+            <div class="day-plans">
+                {% for plan in day.plans|slice:":2" %}
+                <div class="day-plan {% if plan.is_completed %}completed{% endif %}" title="{{ plan.user.username }}: {{ plan.content }}">
+                    {% if plan.is_completed %}✓{% else %}•{% endif %} {{ plan.content|truncatechars:12 }}
+                </div>
+                {% endfor %}
+                {% if day.plans|length > 2 %}
+                <div class="day-more">+{{ day.plans|length|add:"-2" }} 更多</div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
     </div>
 </div>
-{% endfor %}
+{% else %}
+<div class="plan-list-wrap anim-fade-up-1">
+    {% for plan in plans %}
+    <div class="plan-list-item">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="plan-user">{{ plan.user.first_name|default:plan.user.username }}</span>
+                <span class="plan-date">{{ plan.date }}</span>
+            </div>
+            <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
+                {% if plan.is_completed %}<span class="icon icon-check" style="vertical-align: middle; margin-right: 4px;"></span>已完成{% else %}<span class="icon icon-hourglass" style="vertical-align: middle; margin-right: 4px;"></span>进行中{% endif %}
+            </span>
+        </div>
+        <div style="color: var(--color-text-primary); font-size: 0.93rem; line-height: 1.7;">{{ plan.content }}</div>
+    </div>
+    {% empty %}
+    <div class="card">
+          <div class="empty-state">
+              <div class="empty-state-icon"><span class="icon icon-clipboard" style="width: 48px; height: 48px;"></span></div>
+              <p>暂无工作计划</p>
+              <a href="{% url 'my_page' %}" class="link" style="margin-top: 8px; display: inline-block;">去添加 →</a>
+          </div>
+      </div>
+    {% endfor %}
+</div>
+{% endif %}
 {% endblock %}

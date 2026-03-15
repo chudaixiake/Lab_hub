@@ -13,7 +13,7 @@
     <div class="card" {% if announcement.is_pinned %}style="border-left: 4px solid var(--color-accent);"{% endif %}>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <h3 style="color: var(--color-text-primary); font-weight: 600;">
-                {% if announcement.is_pinned %}📌 {% endif %}{{ announcement.title }}
+                {% if announcement.is_pinned %}<span class="icon icon-pushpin" style="vertical-align: middle; margin-right: 4px;"></span>{{ announcement.title }}{% endif %}
             </h3>
             <span style="color: var(--color-text-tertiary); font-size: 0.875rem;">{{ announcement.created_at|date:"Y-m-d H:i" }}</span>
         </div>
@@ -32,7 +32,7 @@
 {% else %}
     <div class="card">
         <div class="empty-state">
-            <div class="empty-state-icon">📢</div>
+            <div class="empty-state-icon"><span class="icon icon-bullhorn" style="width: 48px; height: 48px;"></span></div>
             <p>暂无公告</p>
         </div>
     </div>

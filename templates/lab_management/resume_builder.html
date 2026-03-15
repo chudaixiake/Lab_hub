@@ -1,0 +1,1368 @@
+{% extends 'base.html' %}
+
+{% block title %}简历{% endblock %}
+
+{% block content %}
+<style>
+    /* Congo Theme 完全复现 */
+    :root {
+        --color-primary: #64748b;
+        --color-primary-500: #64748b;
+        --color-primary-600: #475569;
+        --color-primary-700: #334155;
+        --color-primary-800: #1e293b;
+        --color-neutral: #f8fafc;
+        --color-neutral-50: #f8fafc;
+        --color-neutral-100: #f1f5f9;
+        --color-neutral-200: #e2e8f0;
+        --color-neutral-300: #cbd5e1;
+        --color-neutral-400: #94a3b8;
+        --color-neutral-500: #64748b;
+        --color-neutral-600: #475569;
+        --color-neutral-700: #334155;
+        --color-neutral-800: #1e293b;
+        --color-neutral-900: #0f172a;
+    }
+    
+    /* 暗黑模式 */
+    .dark-mode {
+        --color-neutral: #0f172a;
+        --color-neutral-50: #1e293b;
+        --color-neutral-100: #334155;
+        --color-neutral-200: #475569;
+        --color-neutral-300: #64748b;
+        --color-neutral-400: #94a3b8;
+        --color-neutral-500: #cbd5e1;
+        --color-neutral-600: #e2e8f0;
+        --color-neutral-700: #f1f5f9;
+        --color-neutral-800: #f8fafc;
+        --color-neutral-900: #ffffff;
+    }
+    
+    .resume-builder {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+    
+    .builder-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        margin-top: 2rem;
+    }
+    
+    @media (min-width: 1024px) {
+        .builder-grid {
+            grid-template-columns: 420px 1fr;
+        }
+    }
+    
+    @media (min-width: 1280px) {
+        .builder-grid {
+            grid-template-columns: 480px 1fr;
+        }
+    }
+    
+    /* 表单区域 */
+    .builder-forms {
+        background: var(--color-neutral-50);
+        border-radius: 0.5rem;
+        padding: 2rem;
+        box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+        border: 1px solid var(--color-neutral-200);
+    }
+    
+    .dark-mode .builder-forms {
+        background: var(--color-neutral-800);
+        border-color: var(--color-neutral-700);
+    }
+    
+    .form-section {
+        margin-bottom: 2rem;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid var(--color-neutral-200);
+    }
+    
+    .form-section:last-child {
+        border-bottom: none;
+    }
+    
+    .dark-mode .form-section {
+        border-bottom-color: var(--color-neutral-700);
+    }
+    
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--color-neutral-900);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .dark-mode .section-title {
+        color: var(--color-neutral-100);
+    }
+    
+    .btn-add {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        background: var(--color-neutral);
+        border: 1px solid var(--color-neutral-300);
+        border-radius: 0.375rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: var(--color-neutral-700);
+    }
+    
+    .dark-mode .btn-add {
+        background: var(--color-neutral-800);
+        border-color: var(--color-neutral-600);
+        color: var(--color-neutral-300);
+    }
+    
+    .btn-add:hover {
+        border-color: var(--color-primary-500);
+    }
+    
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-group label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--color-neutral-700);
+        margin-bottom: 0.5rem;
+    }
+    
+    .dark-mode .form-group label {
+        color: var(--color-neutral-300);
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.625rem 0.875rem;
+        font-size: 0.875rem;
+        border: 1px solid var(--color-neutral-300);
+        border-radius: 0.375rem;
+        background: var(--color-neutral);
+        color: var(--color-neutral-900);
+        transition: all 0.2s;
+    }
+    
+    .dark-mode .form-control {
+        border-color: var(--color-neutral-600);
+        background: var(--color-neutral-800);
+        color: var(--color-neutral-100);
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: var(--color-primary-500);
+        box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.1);
+    }
+    
+    textarea.form-control {
+        resize: vertical;
+        min-height: 80px;
+    }
+    
+    .entry-card {
+        background: var(--color-neutral);
+        border: 1px solid var(--color-neutral-200);
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .dark-mode .entry-card {
+        background: var(--color-neutral-800);
+        border-color: var(--color-neutral-700);
+    }
+    
+    .entry-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .entry-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--color-neutral-900);
+    }
+    
+    .dark-mode .entry-title {
+        color: var(--color-neutral-100);
+    }
+    
+    .btn-remove {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        color: #ef4444;
+        background: transparent;
+        border: 1px solid #ef4444;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-remove:hover {
+        background: #ef4444;
+        color: white;
+    }
+    
+    /* 预览区域 - A4 纸张模拟 */
+    .builder-preview {
+        position: sticky;
+        top: 2rem;
+        max-height: calc(100vh - 4rem);
+        overflow-y: auto;
+        padding: 1.5rem;
+        background: var(--color-neutral-100);
+        border-radius: 0.5rem;
+    }
+    
+    .dark-mode .builder-preview {
+        background: var(--color-neutral-900);
+    }
+    
+    .preview-label {
+        margin-bottom: 1rem;
+        font-size: 0.875rem;
+        color: var(--color-neutral-500);
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    /* 工具栏样式 */
+    .toolbar {
+        display: flex;
+        gap: 4px;
+        padding: 8px;
+        background: var(--color-neutral-50);
+        border: 1px solid var(--color-neutral-200);
+        border-radius: 6px;
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+    }
+    
+    .dark-mode .toolbar {
+        background: var(--color-neutral-800);
+        border-color: var(--color-neutral-700);
+    }
+    
+    .toolbar-btn {
+        padding: 4px 8px;
+        font-size: 14px;
+        background: var(--color-neutral);
+        border: 1px solid var(--color-neutral-300);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: var(--color-neutral-700);
+    }
+    
+    .dark-mode .toolbar-btn {
+        background: var(--color-neutral-800);
+        border-color: var(--color-neutral-600);
+        color: var(--color-neutral-300);
+    }
+    
+    .toolbar-btn:hover {
+        background: var(--color-primary-500);
+        color: white;
+        border-color: var(--color-primary-500);
+    }
+    
+    .toolbar-btn.active {
+        background: var(--color-primary-600);
+        color: white;
+    }
+    
+    .toolbar-separator {
+        width: 1px;
+        background: var(--color-neutral-300);
+        margin: 0 4px;
+    }
+    
+    .toolbar-select {
+        padding: 4px;
+        font-size: 12px;
+        background: var(--color-neutral);
+        border: 1px solid var(--color-neutral-300);
+        border-radius: 4px;
+        color: var(--color-neutral-700);
+    }
+    
+    .dark-mode .toolbar-select {
+        background: var(--color-neutral-800);
+        border-color: var(--color-neutral-600);
+        color: var(--color-neutral-300);
+    }
+    
+    /* 编辑模式样式 */
+    .resume-preview[contenteditable="true"] {
+        cursor: text;
+    }
+    
+    .resume-preview[contenteditable="true"] *:hover {
+        outline: 1px dashed var(--color-primary-300);
+    }
+    
+    .resume-preview[contenteditable="true"] *:focus {
+        outline: 2px solid var(--color-primary-500);
+        border-radius: 2px;
+    }
+    }
+    
+    .resume-paper {
+        width: 100%;
+        /* A4 比例: 210mm x 297mm = 1 : 1.4142 */
+        aspect-ratio: 210 / 297;
+        background: #ffffff;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08);
+        border-radius: 2px;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .dark-mode .resume-paper {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+    
+    .resume-paper-inner {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 210mm;
+        height: 297mm;
+        transform-origin: top left;
+        padding: 25mm 25mm 25mm 25mm;
+        overflow: hidden;
+    }
+    
+    .resume-preview {
+        font-family: "SimSun", "宋体", "STSong", serif;
+        line-height: 1.6;
+        color: #475569;
+    }
+    
+    .resume-header {
+        text-align: center;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .resume-name {
+        font-size: 26px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 4px;
+        line-height: 1.3;
+    }
+    
+    .resume-headline {
+        font-size: 14px;
+        color: #64748b;
+        font-weight: 400;
+        margin-bottom: 4px;
+    }
+    
+    .resume-contact {
+        margin-top: 8px;
+        font-size: 10px;
+        color: #64748b;
+    }
+    
+    .resume-section {
+        margin-bottom: 16px;
+    }
+    
+    .resume-section-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 6px;
+        padding-bottom: 4px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .resume-entry {
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        padding: 4px;
+        border-radius: 4px;
+    }
+    
+    .resume-entry:hover {
+        background-color: rgba(100, 116, 139, 0.1);
+        transform: translateX(2px);
+    }
+    
+    .resume-name, .resume-headline, .resume-contact {
+        cursor: pointer;
+        transition: all 0.2s;
+        padding: 4px;
+        border-radius: 4px;
+    }
+    
+    .resume-name:hover, .resume-headline:hover, .resume-contact:hover {
+        background-color: rgba(100, 116, 139, 0.1);
+    }
+    
+    .resume-entry-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 2px;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    
+    .resume-entry-title {
+        font-size: 11px;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    
+    .resume-entry-date {
+        font-size: 10px;
+        color: #64748b;
+        font-style: italic;
+    }
+    
+    .resume-entry-subtitle {
+        font-size: 10px;
+        color: #64748b;
+        font-style: italic;
+        margin-bottom: 4px;
+    }
+    
+    .resume-entry-description {
+        font-size: 10px;
+        line-height: 1.6;
+        color: #475569;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    
+    .resume-entry-description ul {
+        padding-left: 1.5em;
+        margin: 4px 0;
+        list-style-type: circle;
+    }
+    
+    .resume-entry-description li {
+        margin-bottom: 2px;
+    }
+    
+    .resume-summary-text {
+        font-size: 10px;
+        line-height: 1.6;
+        color: #475569;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+    
+    /* 按钮 */
+    .btn-generate {
+        width: 100%;
+        padding: 1rem 2rem;
+        font-size: 1rem;
+        font-weight: 700;
+        background: var(--color-primary-600);
+        color: var(--color-neutral);
+        border: none;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+    }
+    
+    .dark-mode .btn-generate {
+        background: var(--color-primary-800);
+    }
+    
+    .btn-generate:hover {
+        background: var(--color-primary-500);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+    
+    /* 暗黑模式切换 */
+    .theme-switcher {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        padding: 0.5rem 1rem;
+        background: var(--color-neutral-50);
+        border: 1px solid var(--color-neutral-200);
+        border-radius: 0.375rem;
+        cursor: pointer;
+        z-index: 100;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--color-neutral-700);
+        transition: all 0.2s;
+    }
+    
+    .dark-mode .theme-switcher {
+        background: var(--color-neutral-800);
+        border-color: var(--color-neutral-700);
+        color: var(--color-neutral-300);
+    }
+    
+    .theme-switcher:hover {
+        border-color: var(--color-primary-500);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--color-neutral-500);
+    }
+    
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+</style>
+
+<button class="theme-switcher" onclick="toggleTheme()">🌓 切换主题</button>
+
+<div class="resume-builder anim-fade-up">
+    <div class="page-header" style="margin-bottom: 2rem;">
+        <h1 class="page-title">简历生成器</h1>
+        <p class="page-subtitle">在线创建专业简历</p>
+    </div>
+    
+    <form method="POST" id="resumeForm" action="">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="generate_pdf">
+        <input type="hidden" name="education_count" id="education_count" value="0">
+        <input type="hidden" name="work_count" id="work_count" value="0">
+        <input type="hidden" name="skill_count" id="skill_count" value="0">
+        <input type="hidden" name="project_count" id="project_count" value="0">
+        <input type="hidden" name="photo_data" id="photo_data" value="">
+        
+        <div class="builder-grid">
+            <!-- 表单区域 -->
+            <div class="builder-forms">
+                <!-- 基本信息 -->
+                <div class="form-section">
+                        <div class="section-header">
+                            <div class="section-title">
+                            <span class="icon icon-user" style="vertical-align: middle; margin-right: 4px;"></span> 基本信息
+                        </div>
+                        </div>
+                        <div class="form-group">
+                            <label>证件照片</label>
+                            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+                                <div id="photoPreview" style="width: 120px; height: 150px; border: 2px dashed var(--color-neutral-300); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; overflow: hidden; background: var(--color-neutral-50);">
+                                    <div style="text-align: center; color: var(--color-neutral-400);">
+                                        <div style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-bottom: 8px;">
+                                            <span class="icon icon-camera" style="width: 24px; height: 24px;"></span>
+                                        </div>
+                                        <div style="font-size: 12px;">点击上传照片</div>
+                                    </div>
+                                </div>
+                                <input type="file" id="photoInput" accept="image/*" style="display: none;" onchange="handlePhotoUpload(event)">
+                                <div style="flex: 1;">
+                                    <button type="button" onclick="document.getElementById('photoInput').click()" class="btn-add">选择照片</button>
+                                    <button type="button" onclick="removePhoto()" class="btn-add" style="margin-left: 8px;">移除照片</button>
+                                    <p style="font-size: 12px; color: var(--color-neutral-500); margin-top: 8px;">建议尺寸：1 寸或 2 寸证件照，支持 JPG、PNG 格式</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>姓名 *</label>
+                            <input type="text" name="name" class="form-control" placeholder="输入您的姓名" required oninput="updatePreview()">
+                        </div>
+                    <div class="form-group">
+                        <label>职位/头衔</label>
+                        <input type="text" name="headline" class="form-control" placeholder="例如：软件工程师 | 全栈开发者" oninput="updatePreview()">
+                    </div>
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input type="email" name="email" class="form-control" placeholder="email@example.com" oninput="updatePreview()">
+                    </div>
+                    <div class="form-group">
+                        <label>电话</label>
+                        <input type="text" name="phone" class="form-control" placeholder="(123) 456-7890" oninput="updatePreview()">
+                    </div>
+                    <div class="form-group">
+                        <label>所在地</label>
+                        <input type="text" name="location" class="form-control" placeholder="城市，省份" oninput="updatePreview()">
+                    </div>
+                    <div class="form-group">
+                        <label>个人简介</label>
+                        <textarea name="summary" class="form-control" rows="4" placeholder="简要描述您的专业背景和技能..." oninput="updatePreview()"></textarea>
+                    </div>
+                </div>
+                
+                <!-- 教育经历 -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <span>🎓</span> 教育经历
+                        </div>
+                        <button type="button" class="btn-add" onclick="addEducation()">+ 添加</button>
+                    </div>
+                    <div id="education-entries"></div>
+                </div>
+                
+                <!-- 工作经历 -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                        <span class="icon icon-briefcase" style="vertical-align: middle; margin-right: 4px;"></span> 工作经历
+                    </div>
+                        <button type="button" class="btn-add" onclick="addWork()">+ 添加</button>
+                    </div>
+                    <div id="work-entries"></div>
+                </div>
+                
+                <!-- 技能 -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <span>⚡</span> 技能
+                        </div>
+                        <button type="button" class="btn-add" onclick="addSkill()">+ 添加</button>
+                    </div>
+                    <div id="skill-entries"></div>
+                </div>
+                
+                <!-- 项目经历 -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <span>🚀</span> 项目经历
+                        </div>
+                        <button type="button" class="btn-add" onclick="addProject()">+ 添加</button>
+                    </div>
+                    <div id="project-entries"></div>
+                </div>
+                
+                <button type="button" onclick="downloadPDF()" class="btn-generate">
+                    <span class="icon icon-download" style="vertical-align: middle; margin-right: 4px;"></span>生成并下载 PDF
+                </button>
+            </div>
+            
+            <!-- 预览区域 - A4 纸张 -->
+            <div class="builder-preview">
+                <div class="preview-label" style="cursor: pointer;" onclick="toggleEditMode()">
+                    <span><span class="icon icon-doc" style="vertical-align: middle; margin-right: 4px;"></span>实时预览 (A4)</span>
+                    <span id="previewScale" style="font-size: 0.75rem; color: var(--color-neutral-400);"></span>
+                    <button type="button" id="editModeBtn" onclick="event.stopPropagation(); toggleEditMode()" class="btn-add" style="font-size: 12px; padding: 6px 12px; cursor: pointer;"><span class="icon icon-pencil" style="vertical-align: middle; margin-right: 4px;"></span>编辑</button>
+                </div>
+                
+                <!-- 格式工具栏 -->
+                <div id="formatToolbar" class="toolbar" style="display: none;">
+                    <button type="button" class="toolbar-btn" onclick="formatDoc('bold')" title="加粗"><b>B</b></button>
+                    <button type="button" class="toolbar-btn" onclick="formatDoc('italic')" title="斜体"><i>I</i></button>
+                    <button type="button" class="toolbar-btn" onclick="formatDoc('underline')" title="下划线"><u>U</u></button>
+                    <div class="toolbar-separator"></div>
+                    <select class="toolbar-select" onchange="formatDoc('fontSize', this.value)">
+                        <option value="3">默认大小</option>
+                        <option value="1">超小</option>
+                        <option value="2">小</option>
+                        <option value="3">正常</option>
+                        <option value="4">大</option>
+                        <option value="5">超大</option>
+                        <option value="6">特大</option>
+                        <option value="7">巨大</option>
+                    </select>
+                    <select class="toolbar-select" onchange="formatDoc('fontName', this.value)">
+                        <option value="SimSun">宋体</option>
+                        <option value="Microsoft YaHei">微软雅黑</option>
+                        <option value="KaiTi">楷体</option>
+                        <option value="HeiTi">黑体</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                    </select>
+                    <div class="toolbar-separator"></div>
+                    <button type="button" class="toolbar-btn" onclick="formatDoc('justifyLeft')" title="左对齐">⬅️</button>
+                    <button type="button" class="toolbar-btn" onclick="formatDoc('justifyCenter')" title="居中">⬆️</button>
+                    <button type="button" class="toolbar-btn" onclick="formatDoc('justifyRight')" title="右对齐">➡️</button>
+                    <div class="toolbar-separator"></div>
+                    <input type="color" onchange="formatDoc('foreColor', this.value)" title="字体颜色" style="width: 30px; height: 24px; border: none; cursor: pointer;">
+                    <button type="button" class="toolbar-btn" onclick="formatDoc('removeFormat')" title="清除格式"><span class="icon icon-trash"></span></button>
+                </div>
+                
+                <div class="resume-paper">
+                    <div class="resume-paper-inner" id="resumePaperInner">
+                        <div class="resume-preview" id="resumePreview" contenteditable="false">
+                            <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #94a3b8; font-size: 14px; text-align: center;">
+                                <div>
+                                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.4;">
+                                        <span class="icon icon-resume" style="width: 32px; height: 32px;"></span>
+                                    </div>
+                                    <p>在左侧填写信息，右侧将实时显示预览</p>
+                                    <p style="font-size: 12px; margin-top: 8px;">点击右上角"进入编辑模式"可直接在预览上编辑</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    let educationCount = 0;
+    let workCount = 0;
+    let skillCount = 0;
+    let projectCount = 0;
+    let photoData = null; // 存储照片的 base64 数据
+    let isEditMode = false; // 编辑模式开关
+    
+    // 切换编辑模式
+    function toggleEditMode() {
+        isEditMode = !isEditMode;
+        const preview = document.getElementById('resumePreview');
+        const toolbar = document.getElementById('formatToolbar');
+        const btn = document.getElementById('editModeBtn');
+        
+        if (isEditMode) {
+            preview.contentEditable = 'true';
+            preview.style.border = '2px solid var(--color-primary-500)';
+            preview.style.boxShadow = '0 0 20px rgba(100, 116, 139, 0.2)';
+            toolbar.style.display = 'flex';
+            btn.innerHTML = '<span class="icon icon-check" style="vertical-align: middle; margin-right: 4px;"></span>完成编辑';
+            btn.style.background = 'var(--color-primary-600)';
+            btn.style.color = 'white';
+            
+            // 禁用左侧表单输入
+            document.querySelectorAll('.form-control').forEach(input => {
+                input.disabled = true;
+            });
+        } else {
+            preview.contentEditable = 'false';
+            preview.style.border = '';
+            preview.style.boxShadow = '';
+            toolbar.style.display = 'none';
+            btn.innerHTML = '<span class="icon icon-pencil" style="vertical-align: middle; margin-right: 4px;"></span>编辑';
+            btn.style.background = '';
+            btn.style.color = '';
+            
+            // 启用左侧表单输入
+            document.querySelectorAll('.form-control').forEach(input => {
+                input.disabled = false;
+            });
+            
+            // 保存编辑后的内容
+            syncToForm();
+        }
+    }
+    
+    // 格式化文档（富文本编辑）
+    function formatDoc(cmd, value = null) {
+        document.execCommand(cmd, false, value);
+        document.getElementById('resumePreview').focus();
+    }
+    
+    // 同步编辑后的内容到表单
+    function syncToForm() {
+        const preview = document.getElementById('resumePreview');
+        
+        // 提取姓名
+        const nameEl = preview.querySelector('.resume-name');
+        if (nameEl) {
+            document.querySelector('input[name="name"]').value = nameEl.textContent.trim();
+        }
+        
+        // 提取职位
+        const headlineEl = preview.querySelector('.resume-headline');
+        if (headlineEl) {
+            document.querySelector('input[name="headline"]').value = headlineEl.textContent.trim();
+        }
+        
+        // 提取联系方式
+        const contactEl = preview.querySelector('.resume-contact');
+        if (contactEl) {
+            const contactText = contactEl.textContent.trim();
+            const parts = contactText.split('|').map(s => s.trim());
+            if (parts.length >= 1) document.querySelector('input[name="email"]').value = parts[0];
+            if (parts.length >= 2) document.querySelector('input[name="phone"]').value = parts[1];
+            if (parts.length >= 3) document.querySelector('input[name="location"]').value = parts[2];
+        }
+        
+        // 提取简介
+        const summaryEl = preview.querySelector('.resume-summary-text');
+        if (summaryEl) {
+            document.querySelector('textarea[name="summary"]').value = summaryEl.textContent.trim();
+        }
+        
+        // 注意：不调用 updatePreview()，保持编辑后的内容
+        // 只需要更新隐藏字段中的照片数据即可
+        if (photoData) {
+            document.getElementById('photo_data').value = photoData;
+        }
+    }
+    
+    // 处理照片上传
+    function handlePhotoUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        // 验证文件类型
+        if (!file.type.startsWith('image/')) {
+            alert('请选择图片文件');
+            return;
+        }
+        
+        // 验证文件大小（不超过 5MB）
+        if (file.size > 5 * 1024 * 1024) {
+            alert('照片大小不能超过 5MB');
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            photoData = e.target.result;
+            
+            // 更新预览
+            const preview = document.getElementById('photoPreview');
+            preview.innerHTML = `<img src="${photoData}" style="width: 100%; height: 100%; object-fit: cover;">`;
+            preview.style.borderStyle = 'solid';
+            preview.style.borderColor = 'var(--color-primary-500)';
+            
+            // 保存到隐藏字段
+            document.getElementById('photo_data').value = photoData;
+            
+            // 更新简历预览
+            updatePreview();
+        };
+        reader.readAsDataURL(file);
+    }
+    
+    // 移除照片
+    function removePhoto() {
+        photoData = null;
+        document.getElementById('photoInput').value = '';
+        document.getElementById('photo_data').value = '';
+        
+        const preview = document.getElementById('photoPreview');
+        preview.innerHTML = `
+            <div style="text-align: center; color: var(--color-neutral-400);">
+                <div style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-bottom: 8px;">
+                    <span class="icon icon-camera" style="width: 24px; height: 24px;"></span>
+                </div>
+                <div style="font-size: 12px;">点击上传照片</div>
+            </div>
+        `;
+        preview.style.borderStyle = 'dashed';
+        preview.style.borderColor = 'var(--color-neutral-300)';
+        
+        updatePreview();
+    }
+    
+    // 点击预览区域上传
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('photoPreview').addEventListener('click', function() {
+            document.getElementById('photoInput').click();
+        });
+    });
+    
+    // 下载 PDF
+    function downloadPDF() {
+        const form = document.getElementById('resumeForm');
+        const formData = new FormData(form);
+        
+        // 验证必填字段
+        const name = document.querySelector('input[name="name"]').value;
+        if (!name || !name.trim()) {
+            alert('请填写姓名');
+            return;
+        }
+        
+        // 确保照片数据被包含
+        if (photoData) {
+            formData.set('photo_data', photoData);
+            console.log('包含照片数据，大小:', photoData.length);
+        } else {
+            console.log('没有照片数据');
+        }
+        
+        // 显示加载提示
+        const btn = event.currentTarget;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="icon icon-hourglass" style="vertical-align: middle; margin-right: 4px;"></span>生成中...';
+        btn.disabled = true;
+        
+        // 使用 fetch 提交表单并下载
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
+            },
+            cache: 'no-store'
+        })
+        .then(response => {
+            console.log('响应状态:', response.status);
+            console.log('响应头:', response.headers.get('content-type'));
+            
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error('服务器错误：' + response.status + ' - ' + text.substring(0, 200));
+                });
+            }
+            
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/pdf')) {
+                throw new Error('响应不是 PDF 文件，内容类型：' + contentType);
+            }
+            
+            return response.blob();
+        })
+        .then(blob => {
+            console.log('PDF blob 大小:', blob.size, 'bytes');
+            
+            if (blob.size === 0) {
+                throw new Error('生成的 PDF 文件为空');
+            }
+            
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${name.replace(/\s+/g, '_')}_简历.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            
+            console.log('下载成功');
+        })
+        .catch(error => {
+            console.error('下载失败:', error);
+            alert('下载失败：' + error.message + '\n\n请检查：\n1. 是否填写了必填字段\n2. 服务器是否正常运行\n3. 查看浏览器控制台获取详细错误信息');
+        })
+        .finally(() => {
+            // 恢复按钮状态
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+    }
+    
+    // 暗黑模式
+    function toggleTheme() {
+        document.body.classList.toggle('dark-mode');
+        localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+    }
+    
+    // 初始化主题
+    if (localStorage.getItem('theme') === 'dark') {
+        document.body.classList.add('dark-mode');
+    }
+    
+    // A4 纸张缩放
+    function scaleResumePaper() {
+        const paper = document.querySelector('.resume-paper');
+        const inner = document.getElementById('resumePaperInner');
+        if (!paper || !inner) return;
+        const paperWidth = paper.clientWidth;
+        // inner 原始宽度是 210mm ≈ 793.7px
+        const scale = paperWidth / 793.7;
+        inner.style.transform = `scale(${scale})`;
+        const scaleLabel = document.getElementById('previewScale');
+        if (scaleLabel) scaleLabel.textContent = `${Math.round(scale * 100)}%`;
+    }
+    
+    window.addEventListener('resize', scaleResumePaper);
+    window.addEventListener('load', function() {
+        scaleResumePaper();
+        // 延迟再次调用以确保渲染完成
+        setTimeout(scaleResumePaper, 100);
+    });
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        // 保留换行符
+        return div.innerHTML.replace(/\n/g, '<br>');
+    }
+    
+    // 滚动到对应字段并高亮
+    function scrollToField(fieldName) {
+        const field = document.querySelector(`[name="${fieldName}"]`);
+        if (field) {
+            // 找到字段所在的卡片
+            const card = field.closest('.form-group') || field.closest('.entry-card');
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // 添加高亮效果
+                card.style.transition = 'all 0.3s';
+                card.style.boxShadow = '0 0 0 2px var(--color-primary-500)';
+                card.style.backgroundColor = 'rgba(100, 116, 139, 0.1)';
+                
+                // 聚焦到输入框
+                if (field.tagName === 'INPUT' || field.tagName === 'TEXTAREA' || field.tagName === 'SELECT') {
+                    field.focus();
+                }
+                
+                // 2 秒后移除高亮
+                setTimeout(() => {
+                    card.style.boxShadow = '';
+                    card.style.backgroundColor = '';
+                }, 2000);
+            }
+        }
+    }
+    
+    function updatePreview() {
+        const name = document.querySelector('input[name="name"]').value || '您的姓名';
+        const headline = document.querySelector('input[name="headline"]').value || '';
+        const email = document.querySelector('input[name="email"]').value || '';
+        const phone = document.querySelector('input[name="phone"]').value || '';
+        const location = document.querySelector('input[name="location"]').value || '';
+        const summary = document.querySelector('textarea[name="summary"]').value || '';
+        
+        // 构建联系信息 - 与 PDF 一致，使用 | 分隔
+        let contactParts = [];
+        if (email) contactParts.push(escapeHtml(email));
+        if (phone) contactParts.push(escapeHtml(phone));
+        if (location) contactParts.push(escapeHtml(location));
+        const contactInfo = contactParts.join(' | ');
+        
+        // 教育经历预览
+        let educationHTML = '';
+        for (let i = 0; i < educationCount; i++) {
+            const el = document.querySelector(`input[name="education_${i}_institution"]`);
+            if (!el) continue;
+            const institution = el.value || '';
+            const degree = document.querySelector(`select[name="education_${i}_degree"]`)?.value || '';
+            const area = document.querySelector(`input[name="education_${i}_area"]`)?.value || '';
+            const startDate = document.querySelector(`input[name="education_${i}_start_date"]`)?.value || '';
+            const endDate = document.querySelector(`input[name="education_${i}_end_date"]`)?.value || '至今';
+            const description = document.querySelector(`textarea[name="education_${i}_description"]`)?.value || '';
+            
+            if (institution) {
+                let dateStr = '';
+                if (startDate && endDate) dateStr = `${startDate} - ${endDate}`;
+                else if (startDate) dateStr = `${startDate} - 至今`;
+                
+                educationHTML += `
+                    <div class="resume-entry" onclick="scrollToField('education_${i}_institution')">
+                        <div class="resume-entry-header">
+                            <div class="resume-entry-title">${escapeHtml(institution)}</div>
+                            ${dateStr ? `<div class="resume-entry-date">${escapeHtml(dateStr)}</div>` : ''}
+                        </div>
+                        <div class="resume-entry-subtitle">${escapeHtml(degree)} - ${escapeHtml(area)}</div>
+                        ${description ? `<div class="resume-entry-description">${escapeHtml(description)}</div>` : ''}
+                    </div>
+                `;
+            }
+        }
+        
+        // 工作经历预览
+        let workHTML = '';
+        for (let i = 0; i < workCount; i++) {
+            const el = document.querySelector(`input[name="work_${i}_company"]`);
+            if (!el) continue;
+            const company = el.value || '';
+            const position = document.querySelector(`input[name="work_${i}_position"]`)?.value || '';
+            const startDate = document.querySelector(`input[name="work_${i}_start_date"]`)?.value || '';
+            const endDate = document.querySelector(`input[name="work_${i}_end_date"]`)?.value || '至今';
+            const description = document.querySelector(`textarea[name="work_${i}_description"]`)?.value || '';
+            
+            if (company) {
+                let dateStr = '';
+                if (startDate && endDate) dateStr = `${startDate} - ${endDate}`;
+                else if (startDate) dateStr = `${startDate} - 至今`;
+                
+                workHTML += `
+                    <div class="resume-entry" onclick="scrollToField('work_${i}_company')">
+                        <div class="resume-entry-header">
+                            <div class="resume-entry-title">${escapeHtml(company)}</div>
+                            ${dateStr ? `<div class="resume-entry-date">${escapeHtml(dateStr)}</div>` : ''}
+                        </div>
+                        <div class="resume-entry-subtitle">${escapeHtml(position)}</div>
+                        ${description ? `<div class="resume-entry-description">${escapeHtml(description)}</div>` : ''}
+                    </div>
+                `;
+            }
+        }
+        
+        // 技能预览
+        let skillsHTML = '';
+        for (let i = 0; i < skillCount; i++) {
+            const el = document.querySelector(`input[name="skill_${i}_category"]`);
+            if (!el) continue;
+            const category = el.value || '';
+            const skills = document.querySelector(`input[name="skill_${i}_skills"]`)?.value || '';
+            
+            if (category) {
+                skillsHTML += `
+                    <div class="resume-entry" onclick="scrollToField('skill_${i}_category')">
+                        <div class="resume-entry-description"><b>${escapeHtml(category)}:</b> ${escapeHtml(skills)}</div>
+                    </div>
+                `;
+            }
+        }
+        
+        // 项目经历预览
+        let projectsHTML = '';
+        for (let i = 0; i < projectCount; i++) {
+            const el = document.querySelector(`input[name="project_${i}_name"]`);
+            if (!el) continue;
+            const projectName = el.value || '';
+            const description = document.querySelector(`textarea[name="project_${i}_description"]`)?.value || '';
+            const link = document.querySelector(`input[name="project_${i}_link"]`)?.value || '';
+            
+            if (projectName) {
+                let titleText = escapeHtml(projectName);
+                if (link) titleText += ` (${escapeHtml(link)})`;
+                
+                projectsHTML += `
+                    <div class="resume-entry" onclick="scrollToField('project_${i}_name')">
+                        <div class="resume-entry-title">${titleText}</div>
+                        ${description ? `<div class="resume-entry-description">${escapeHtml(description)}</div>` : ''}
+                    </div>
+                `;
+            }
+        }
+        
+        // 构建完整预览 - 与 PDF 布局完全一致
+        let previewHTML = `
+            <div class="resume-header" style="position: relative; display: flex; justify-content: space-between; align-items: flex-start;">
+                <div style="flex: 1;">
+                    <div class="resume-name" onclick="scrollToField('name')">${escapeHtml(name)}</div>
+                    ${headline ? `<div class="resume-headline" onclick="scrollToField('headline')">${escapeHtml(headline)}</div>` : ''}
+                    ${contactInfo ? `<div class="resume-contact" onclick="scrollToField('email')">${escapeHtml(contactInfo)}</div>` : ''}
+                </div>
+                ${photoData ? `<img src="${photoData}" style="width: 80px; height: 100px; object-fit: cover; border: 2px solid #e2e8f0; border-radius: 4px; margin-left: 15px;">` : ''}
+            </div>
+        `;
+        
+        if (summary) {
+            previewHTML += `
+                <div class="resume-section">
+                    <div class="resume-section-title">个人简介</div>
+                    <div class="resume-summary-text">${escapeHtml(summary)}</div>
+                </div>
+            `;
+        }
+        
+        if (educationHTML) {
+            previewHTML += `
+                <div class="resume-section">
+                    <div class="resume-section-title">教育经历</div>
+                    ${educationHTML}
+                </div>
+            `;
+        }
+        
+        if (workHTML) {
+            previewHTML += `
+                <div class="resume-section">
+                    <div class="resume-section-title">工作经历</div>
+                    ${workHTML}
+                </div>
+            `;
+        }
+        
+        if (skillsHTML) {
+            previewHTML += `
+                <div class="resume-section">
+                    <div class="resume-section-title">技能</div>
+                    ${skillsHTML}
+                </div>
+            `;
+        }
+        
+        if (projectsHTML) {
+            previewHTML += `
+                <div class="resume-section">
+                    <div class="resume-section-title">项目经历</div>
+                    ${projectsHTML}
+                </div>
+            `;
+        }
+        
+        document.getElementById('resumePreview').innerHTML = previewHTML || `
+            <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #94a3b8; font-size: 14px; text-align: center;">
+                <div>
+                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.4;">
+                        <span class="icon icon-resume" style="width: 32px; height: 32px;"></span>
+                    </div>
+                    <p>开始填写信息以查看预览</p>
+                </div>
+            </div>
+        `;
+        
+        // 更新缩放
+        scaleResumePaper();
+    }
+    
+    function addEducation() {
+        const container = document.getElementById('education-entries');
+        const entry = document.createElement('div');
+        entry.className = 'entry-card';
+        entry.innerHTML = `
+            <div class="entry-header">
+                <div class="entry-title">教育经历 #${educationCount + 1}</div>
+                <button type="button" class="btn-remove" onclick="this.parentElement.parentElement.remove(); updatePreview();">移除</button>
+            </div>
+            <div class="form-group">
+                <label>学校/机构</label>
+                <input type="text" name="education_${educationCount}_institution" class="form-control" placeholder="学校名称" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+                <label>学位</label>
+                <select name="education_${educationCount}_degree" class="form-control" onchange="updatePreview()">
+                    <option value="高中">高中</option>
+                    <option value="专科">专科</option>
+                    <option value="本科" selected>本科</option>
+                    <option value="硕士">硕士</option>
+                    <option value="博士">博士</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>专业</label>
+                <input type="text" name="education_${educationCount}_area" class="form-control" placeholder="专业名称" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+                <label>开始日期</label>
+                <input type="text" name="education_${educationCount}_start_date" class="form-control" placeholder="YYYY-MM" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+                <label>结束日期</label>
+                <input type="text" name="education_${educationCount}_end_date" class="form-control" placeholder="YYYY-MM 或留空表示至今" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+                <label>描述</label>
+                <textarea name="education_${educationCount}_description" class="form-control" rows="3" placeholder="主修课程、成就等..." oninput="updatePreview()"></textarea>
+            </div>
+        `;
+        container.appendChild(entry);
+        educationCount++;
+        document.getElementById('education_count').value = educationCount;
+        updatePreview();
+    }
+    
+    function addWork() {
+        const container = document.getElementById('work-entries');
+        const entry = document.createElement('div');
+        entry.className = 'entry-card';
+        entry.innerHTML = `
+            <div class="entry-header">
+                <div class="entry-title">工作经历 #${workCount + 1}</div>
+                <button type="button" class="btn-remove" onclick="this.parentElement.parentElement.remove(); updatePreview();">移除</button>
+            </div>
+            <div class="form-group">
+                <label>公司名称</label>
+                <input type="text" name="work_${workCount}_company" class="form-control" placeholder="公司名称" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+                <label>职位</label>
+                <input type="text" name="work_${workCount}_position" class="form-control" placeholder="职位名称" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+                <label>开始日期</label>
+                <input type="text" name="work_${workCount}_start_date" class="form-control" placeholder="YYYY-MM" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+                <label>结束日期</label>
+                <input type="text" name="work_${workCount}_end_date" class="form-control" placeholder="YYYY-MM 或留空表示至今" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+                <label>工作描述</label>
+                <textarea name="work_${workCount}_description" class="form-control" rows="4" placeholder="工作职责和成就..." oninput="updatePreview()"></textarea>
+            </div>
+        `;
+        container.appendChild(entry);
+        workCount++;
+        document.getElementById('work_count').value = workCount;
+        updatePreview();
+    }
+    
+    function addSkill() {
+        const container = document.getElementById('skill-entries');
+        const entry = document.createElement('div');
+        entry.className = 'entry-card';
+        entry.innerHTML = `
+            <div class="entry-header">
+                <div class="entry-title">技能 #${skillCount + 1}</div>
+                <button type="button" class="btn-remove" onclick="this.parentElement.parentElement.remove(); updatePreview();">移除</button>
+            </div>
+            <div class="form-group">
+                <label>技能类别</label>
+                <input type="text" name="skill_${skillCount}_category" class="form-control" placeholder="例如：编程语言、框架、工具等" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+                <label>技能列表</label>
+                <input type="text" name="skill_${skillCount}_skills" class="form-control" placeholder="用逗号分隔，例如：Python, Java, JavaScript" oninput="updatePreview()">
+            </div>
+        `;
+        container.appendChild(entry);
+        skillCount++;
+        document.getElementById('skill_count').value = skillCount;
+        updatePreview();
+    }
+    
+    function addProject() {
+        const container = document.getElementById('project-entries');
+        const entry = document.createElement('div');
+        entry.className = 'entry-card';
+        entry.innerHTML = `
+            <div class="entry-header">
+                <div class="entry-title">项目 #${projectCount + 1}</div>
+                <button type="button" class="btn-remove" onclick="this.parentElement.parentElement.remove(); updatePreview();">移除</button>
+            </div>
+            <div class="form-group">
+                <label>项目名称</label>
+                <input type="text" name="project_${projectCount}_name" class="form-control" placeholder="项目名称" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+                <label>项目描述</label>
+                <textarea name="project_${projectCount}_description" class="form-control" rows="3" placeholder="项目概述、技术栈、您的贡献等..." oninput="updatePreview()"></textarea>
+            </div>
+            <div class="form-group">
+                <label>项目链接</label>
+                <input type="url" name="project_${projectCount}_link" class="form-control" placeholder="https://..." oninput="updatePreview()">
+            </div>
+        `;
+        container.appendChild(entry);
+        projectCount++;
+        document.getElementById('project_count').value = projectCount;
+        updatePreview();
+    }
+    
+    // 添加事件监听器到基本字段
+    document.querySelectorAll('input[name="name"], input[name="headline"], input[name="email"], input[name="phone"], input[name="location"], textarea[name="summary"]').forEach(field => {
+        field.addEventListener('input', updatePreview);
+    });
+</script>
+{% endblock %}

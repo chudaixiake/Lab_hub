@@ -1,37 +1,719 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 · 实验室管理系统</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-{% block title %}用户登录{% endblock %}
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            background: var(--bg-gradient);
+            transition: background 1s ease;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
 
-{% block content %}
-<div class="auth-container">
-    <div class="auth-card">
-        <h1 class="auth-title">欢迎回来</h1>
-        <p class="auth-subtitle">登录到实验室管理系统</p>
-        
-        {% if messages %}
-            {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">
-                {{ message }}
-            </div>
-            {% endfor %}
-        {% endif %}
-        
-        <form method="post">
-            {% csrf_token %}
-            <div class="form-group">
-                <label class="form-label">用户名</label>
-                <input type="text" name="username" required class="form-input" placeholder="请输入用户名">
-            </div>
-            <div class="form-group">
-                <label class="form-label">密码</label>
-                <input type="password" name="password" required class="form-input" placeholder="请输入密码">
-            </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%;">登录</button>
-        </form>
-        
-        <p class="auth-footer">
-            还没有账号？ <a href="{% url 'register' %}" class="link">立即注册</a>
-        </p>
+        /* ========== 时间段主题色 (由 JS 动态设置) ========== */
+        :root {
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --accent: #6366f1;
+            --accent-light: rgba(99,102,241,0.12);
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --card-bg: rgba(255,255,255,0.92);
+            --card-border: rgba(255,255,255,0.6);
+            --input-bg: #f8fafc;
+            --input-border: #e2e8f0;
+            --input-focus-shadow: rgba(99,102,241,0.15);
+            --mascot-color-1: #6366f1;
+            --mascot-color-2: #8b5cf6;
+            --mascot-color-3: #a78bfa;
+            --quote-color: rgba(255,255,255,0.7);
+        }
+
+        /* ========== 主布局 ========== */
+        .page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            position: relative;
+        }
+
+        /* ========== 返回首页 ========== */
+        .back-link {
+            position: fixed;
+            top: 24px; left: 28px;
+            text-decoration: none;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .back-link:hover { color: rgba(255,255,255,0.9); transform: translateX(-2px); }
+
+        /* ========== 时间显示 ========== */
+        .clock {
+            position: fixed;
+            top: 24px; right: 28px;
+            text-align: right;
+            z-index: 10;
+            color: rgba(255,255,255,0.35);
+        }
+        .clock-time {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1;
+        }
+        .clock-date {
+            font-size: 0.72rem;
+            margin-top: 2px;
+            opacity: 0.7;
+        }
+
+        /* ========== 极简小人 ========== */
+        .mascots {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 20px;
+            animation: fadeIn 0.8s ease-out 0.1s both;
+        }
+        .mascot {
+            position: relative;
+            transition: transform 0.3s ease;
+        }
+        .mascot:hover { transform: translateY(-3px); }
+
+        /* 小人身体 = 纯圆 */
+        .mascot-body {
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .mascot.s1 .mascot-body {
+            width: 48px; height: 48px;
+            background: var(--mascot-color-3);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+        .mascot.s2 .mascot-body {
+            width: 64px; height: 64px;
+            background: var(--mascot-color-1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+        }
+        .mascot.s3 .mascot-body {
+            width: 48px; height: 48px;
+            background: var(--mascot-color-2);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+
+        /* 眼睛 */
+        .m-eyes {
+            display: flex;
+            gap: 8px;
+            position: relative;
+            top: -2px;
+        }
+        .mascot.s1 .m-eyes { gap: 6px; }
+        .mascot.s3 .m-eyes { gap: 6px; }
+
+        .m-eye {
+            background: white;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+        }
+        .mascot.s2 .m-eye { width: 16px; height: 16px; }
+        .mascot.s1 .m-eye,
+        .mascot.s3 .m-eye { width: 12px; height: 12px; }
+
+        .m-pupil {
+            width: 50%;
+            height: 50%;
+            background: #1e1b4b;
+            border-radius: 50%;
+            position: absolute;
+            top: 25%; left: 25%;
+            transition: transform 0.1s ease-out;
+        }
+        .m-pupil::after {
+            content: '';
+            position: absolute;
+            top: 1px; right: 1px;
+            width: 3px; height: 3px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 50%;
+        }
+        .mascot.s1 .m-pupil::after,
+        .mascot.s3 .m-pupil::after {
+            width: 2px; height: 2px;
+        }
+
+        /* 害羞时眼睛变成线 */
+        .m-eye-shut {
+            display: none;
+            width: 10px;
+            height: 2px;
+            background: rgba(255,255,255,0.85);
+            border-radius: 2px;
+        }
+        .mascot.s2 .m-eye-shut { width: 12px; }
+        .mascot.shy .m-eye { display: none; }
+        .mascot.shy .m-eye-shut { display: block; }
+
+        /* 腮红 (害羞时出现) */
+        .m-blush {
+            position: absolute;
+            bottom: 30%;
+            width: 8px; height: 5px;
+            background: rgba(251,113,133,0.5);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .mascot.s2 .m-blush { width: 10px; height: 6px; bottom: 28%; }
+        .m-blush.l { left: 12%; }
+        .m-blush.r { right: 12%; }
+        .mascot.s1 .m-blush.l { left: 10%; }
+        .mascot.s1 .m-blush.r { right: 10%; }
+        .mascot.s3 .m-blush.l { left: 10%; }
+        .mascot.s3 .m-blush.r { right: 10%; }
+        .mascot.shy .m-blush { opacity: 1; }
+
+        /* 嘴巴 */
+        .m-mouth {
+            position: absolute;
+            bottom: 22%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 6px; height: 3px;
+            border-radius: 0 0 6px 6px;
+            background: rgba(255,255,255,0.3);
+            transition: all 0.3s;
+        }
+        .mascot.s2 .m-mouth { width: 8px; height: 4px; bottom: 20%; }
+        .mascot.shy .m-mouth {
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.25);
+        }
+
+        /* 呼吸浮动 */
+        .mascot.s1 { animation: breathe 3.5s ease-in-out infinite; }
+        .mascot.s2 { animation: breathe 3s ease-in-out 0.2s infinite; }
+        .mascot.s3 { animation: breathe 3.3s ease-in-out 0.5s infinite; }
+        @keyframes breathe {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+        .mascot.shy { animation: none !important; }
+
+        /* ========== 登录卡片 ========== */
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 36px 32px 32px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04);
+            animation: cardIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+        }
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(30px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* 问候 */
+        .greeting {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .greeting h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+            margin-bottom: 4px;
+        }
+        .greeting p {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+        }
+
+        /* 表单 */
+        .form-group {
+            margin-bottom: 18px;
+            position: relative;
+        }
+        .form-label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        .form-input {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--input-bg);
+            border: 1.5px solid var(--input-border);
+            border-radius: 12px;
+            font-size: 0.92rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+        .form-input::placeholder { color: var(--text-muted); }
+        .form-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--input-focus-shadow);
+            background: white;
+        }
+
+        /* 密码框 */
+        .pwd-wrap { position: relative; }
+        .pwd-wrap .form-input { padding-right: 42px; }
+        .pwd-toggle {
+            position: absolute;
+            right: 10px; top: 50%;
+            transform: translateY(-50%);
+            background: none; border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 15px;
+            width: 28px; height: 28px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .pwd-toggle:hover { color: var(--accent); background: var(--accent-light); }
+
+        /* 底部选项行 */
+        .form-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+        .checkbox-label input {
+            accent-color: var(--accent);
+            width: 15px; height: 15px;
+        }
+
+        /* 登录按钮 */
+        .submit-btn {
+            width: 100%;
+            padding: 13px;
+            background: var(--accent);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .submit-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            filter: brightness(1.05);
+        }
+        .submit-btn:active { transform: scale(0.98); }
+        .submit-btn.loading .btn-label { opacity: 0; }
+        .submit-btn .spinner {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            width: 20px; height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            opacity: 0;
+        }
+        .submit-btn.loading .spinner {
+            opacity: 1;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+
+        /* 底部注册链接 */
+        .card-footer {
+            text-align: center;
+            margin-top: 22px;
+            font-size: 0.84rem;
+            color: var(--text-muted);
+        }
+        .card-footer a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .card-footer a:hover { text-decoration: underline; }
+
+        /* ========== 名人名言 ========== */
+        .quote-area {
+            max-width: 480px;
+            text-align: center;
+            margin-top: 36px;
+            animation: fadeIn 1s ease-out 0.8s both;
+        }
+        .quote-text {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 0.92rem;
+            color: var(--quote-color);
+            line-height: 1.8;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            transition: opacity 0.5s;
+        }
+        .quote-author {
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.4);
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        /* ========== 提示框 ========== */
+        .alert {
+            padding: 10px 14px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            font-size: 0.84rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .alert-success { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+        .alert-error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+        /* ========== 动画 ========== */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* ========== 背景装饰圆 ========== */
+        .bg-circle {
+            position: fixed;
+            border-radius: 50%;
+            opacity: 0.08;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .bg-circle.c1 {
+            width: 300px; height: 300px;
+            background: white;
+            top: -80px; right: -60px;
+        }
+        .bg-circle.c2 {
+            width: 200px; height: 200px;
+            background: white;
+            bottom: -40px; left: -40px;
+        }
+        .bg-circle.c3 {
+            width: 120px; height: 120px;
+            background: white;
+            top: 50%; left: 10%;
+            animation: floatSlow 12s ease-in-out infinite;
+        }
+        @keyframes floatSlow {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(20px, -20px); }
+        }
+
+        /* ========== 响应式 ========== */
+        @media (max-width: 480px) {
+            .login-card { padding: 28px 22px 26px; border-radius: 20px; }
+            .greeting h1 { font-size: 1.3rem; }
+            .mascots { gap: 12px; }
+            .mascot.s2 .mascot-body { width: 52px; height: 52px; }
+            .mascot.s1 .mascot-body,
+            .mascot.s3 .mascot-body { width: 40px; height: 40px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 背景装饰 -->
+    <div class="bg-circle c1"></div>
+    <div class="bg-circle c2"></div>
+    <div class="bg-circle c3"></div>
+
+    <!-- 返回首页 -->
+    <a href="{% url 'home' %}" class="back-link">← 返回首页</a>
+
+    <!-- 时钟 -->
+    <div class="clock">
+        <div class="clock-time" id="clockTime">--:--</div>
+        <div class="clock-date" id="clockDate"></div>
     </div>
-</div>
-{% endblock %}
+
+    <div class="page">
+        <!-- 三个极简小人 -->
+        <div class="mascots">
+            <div class="mascot s1">
+                <div class="mascot-body">
+                    <div class="m-eyes">
+                        <div class="m-eye"><div class="m-pupil"></div></div>
+                        <div class="m-eye"><div class="m-pupil"></div></div>
+                        <div class="m-eye-shut"></div>
+                        <div class="m-eye-shut"></div>
+                    </div>
+                    <div class="m-mouth"></div>
+                    <div class="m-blush l"></div>
+                    <div class="m-blush r"></div>
+                </div>
+            </div>
+            <div class="mascot s2">
+                <div class="mascot-body">
+                    <div class="m-eyes">
+                        <div class="m-eye"><div class="m-pupil"></div></div>
+                        <div class="m-eye"><div class="m-pupil"></div></div>
+                        <div class="m-eye-shut"></div>
+                        <div class="m-eye-shut"></div>
+                    </div>
+                    <div class="m-mouth"></div>
+                    <div class="m-blush l"></div>
+                    <div class="m-blush r"></div>
+                </div>
+            </div>
+            <div class="mascot s3">
+                <div class="mascot-body">
+                    <div class="m-eyes">
+                        <div class="m-eye"><div class="m-pupil"></div></div>
+                        <div class="m-eye"><div class="m-pupil"></div></div>
+                        <div class="m-eye-shut"></div>
+                        <div class="m-eye-shut"></div>
+                    </div>
+                    <div class="m-mouth"></div>
+                    <div class="m-blush l"></div>
+                    <div class="m-blush r"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 登录卡片 -->
+        <div class="login-card">
+            <div class="greeting">
+                <h1 id="greetTitle">欢迎回来</h1>
+                <p>登录到实验室管理系统</p>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {% if message.tags == 'success' %}✓{% elif message.tags == 'error' %}✕{% else %}i{% endif %}
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="post" id="loginForm">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label class="form-label">用户名</label>
+                    <input type="text" name="username" required class="form-input" id="usernameInput" placeholder="请输入用户名" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">密码</label>
+                    <div class="pwd-wrap">
+                        <input type="password" name="password" id="passwordInput" required class="form-input" placeholder="请输入密码" autocomplete="current-password">
+                        <button type="button" class="pwd-toggle" id="pwdToggle" title="显示/隐藏密码">👁</button>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="remember">
+                        记住我
+                    </label>
+                </div>
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    <span class="btn-label">登 录</span>
+                    <div class="spinner"></div>
+                </button>
+            </form>
+            <div class="card-footer">
+                还没有账号？<a href="{% url 'register' %}">立即注册</a>
+            </div>
+        </div>
+
+        <!-- 名人名言 -->
+        <div class="quote-area">
+            <div class="quote-text" id="quoteText"></div>
+            <div class="quote-author" id="quoteAuthor"></div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        const hour = new Date().getHours();
+
+        // ========== 时间段主题 ==========
+        const themes = {
+            dawn:      { bg: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)', accent: '#818cf8', m1: '#818cf8', m2: '#6366f1', m3: '#a78bfa', quote: 'rgba(200,210,255,0.6)' },
+            morning:   { bg: 'linear-gradient(135deg, #fceabb, #f8b500, #fda085)', accent: '#ea580c', m1: '#fb923c', m2: '#f97316', m3: '#fdba74', quote: 'rgba(120,60,0,0.45)' },
+            forenoon:  { bg: 'linear-gradient(135deg, #89f7fe, #66a6ff)',           accent: '#2563eb', m1: '#60a5fa', m2: '#3b82f6', m3: '#93c5fd', quote: 'rgba(255,255,255,0.65)' },
+            noon:      { bg: 'linear-gradient(135deg, #f6d365, #fda085)',           accent: '#d97706', m1: '#fbbf24', m2: '#f59e0b', m3: '#fcd34d', quote: 'rgba(100,50,0,0.4)' },
+            afternoon: { bg: 'linear-gradient(135deg, #fa709a, #fee140)',           accent: '#e11d48', m1: '#fb7185', m2: '#f43f5e', m3: '#fda4af', quote: 'rgba(255,255,255,0.6)' },
+            evening:   { bg: 'linear-gradient(135deg, #a18cd1, #fbc2eb)',           accent: '#7c3aed', m1: '#a78bfa', m2: '#8b5cf6', m3: '#c4b5fd', quote: 'rgba(255,255,255,0.6)' },
+            night:     { bg: 'linear-gradient(135deg, #0c1445, #1a1a5e, #2d1b69)', accent: '#818cf8', m1: '#818cf8', m2: '#6366f1', m3: '#a78bfa', quote: 'rgba(180,190,255,0.5)' }
+        };
+
+        let period, greetText;
+        if (hour >= 0 && hour < 5)       { period = 'dawn';      greetText = '🌌 凌晨了，夜猫子你好'; }
+        else if (hour >= 5 && hour < 8)  { period = 'morning';   greetText = '🌅 早上好'; }
+        else if (hour >= 8 && hour < 12) { period = 'forenoon';  greetText = '☀️ 上午好'; }
+        else if (hour >= 12 && hour < 14){ period = 'noon';      greetText = '🌤 中午好'; }
+        else if (hour >= 14 && hour < 18){ period = 'afternoon'; greetText = '🌇 下午好'; }
+        else if (hour >= 18 && hour < 22){ period = 'evening';   greetText = '🌙 晚上好'; }
+        else                             { period = 'night';     greetText = '🌌 夜深了，注意休息'; }
+
+        const t = themes[period];
+        const root = document.documentElement.style;
+        root.setProperty('--bg-gradient', t.bg);
+        root.setProperty('--accent', t.accent);
+        root.setProperty('--accent-light', t.accent + '1a');
+        root.setProperty('--input-focus-shadow', t.accent + '26');
+        root.setProperty('--mascot-color-1', t.m1);
+        root.setProperty('--mascot-color-2', t.m2);
+        root.setProperty('--mascot-color-3', t.m3);
+        root.setProperty('--quote-color', t.quote);
+
+        document.getElementById('greetTitle').textContent = greetText;
+
+        // ========== 时钟 ==========
+        const weekdays = ['日','一','二','三','四','五','六'];
+        function tick() {
+            const n = new Date();
+            document.getElementById('clockTime').textContent =
+                String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+            document.getElementById('clockDate').textContent =
+                (n.getMonth()+1) + '月' + n.getDate() + '日 周' + weekdays[n.getDay()];
+        }
+        tick(); setInterval(tick, 10000);
+
+        // ========== 名人名言 ==========
+        const quotes = [
+            { text: '要永远相信你的灵魂。', author: '卡尔玛' },
+            { text: '均衡存乎万物之间。', author: '阿卡丽' },
+            { text: '犹豫既是死亡。', author: '亚托克斯' },
+            { text: '真正的嗜好，从来不会动摇。', author: '塔姆' },
+            { text: '04.24，和Sakura去东京天空树，世界上最暖和的地方在天空树的顶上。', author: 'LuLu' },
+            { text: 'lonely kids hides in heart', author: 'Lu' },
+            { text: '真正的大师永远都怀着一颗学徒的心。', author: 'Master Yi' },
+            { text: '想象力比知识更重要。', author: '爱因斯坦' },
+            { text: 'Something for nothing。', author: 'Lu' },
+            { text: '如果你不了解自己的过去，怎么知道未来要往哪个方向?', author: '楚子航' },
+            { text: '一个人能为正义付出多少代价呢？', author: '源君' },
+            { text: '不积跬步，无以至千里；不积小流，无以成江海。', author: '荀子' },
+            { text: 'For the glory of humankind!', author: '楚子航' },
+            { text: '恐惧是人类共通的弱点。', author: '樱井明' },
+        ];
+        const q = quotes[Math.floor(Math.random() * quotes.length)];
+        document.getElementById('quoteText').textContent = '「' + q.text + '」';
+        document.getElementById('quoteAuthor').textContent = '—— ' + q.author;
+
+        // 每 2 秒换一条
+        setInterval(() => {
+            const el = document.getElementById('quoteText');
+            const el2 = document.getElementById('quoteAuthor');
+            el.style.opacity = '0';
+            el2.style.opacity = '0';
+            setTimeout(() => {
+                const nq = quotes[Math.floor(Math.random() * quotes.length)];
+                el.textContent = '「' + nq.text + '」';
+                el2.textContent = '—— ' + nq.author;
+                el.style.opacity = '1';
+                el2.style.opacity = '1';
+            }, 500);
+        }, 3000);
+
+        // ========== 眼睛追踪鼠标 ==========
+        const pupils = document.querySelectorAll('.m-pupil');
+        let isPwdFocus = false;
+
+        function trackEyes(mx, my) {
+            if (isPwdFocus) return;
+            pupils.forEach(p => {
+                const eye = p.parentElement;
+                const r = eye.getBoundingClientRect();
+                const cx = r.left + r.width / 2;
+                const cy = r.top + r.height / 2;
+                const dx = mx - cx, dy = my - cy;
+                const angle = Math.atan2(dy, dx);
+                const maxD = eye.closest('.s2') ? 4 : 3;
+                const ratio = Math.min(Math.sqrt(dx*dx + dy*dy) / 200, 1);
+                p.style.transform = `translate(${Math.cos(angle)*maxD*ratio}px, ${Math.sin(angle)*maxD*ratio}px)`;
+            });
+        }
+        document.addEventListener('mousemove', e => trackEyes(e.clientX, e.clientY));
+
+        // 用户名输入时眼睛跟着看
+        document.getElementById('usernameInput').addEventListener('input', function() {
+            if (isPwdFocus) return;
+            const r = this.getBoundingClientRect();
+            const offset = Math.min(this.value.length * 8, r.width - 30);
+            trackEyes(r.left + 14 + offset, r.top + r.height / 2);
+        });
+
+        // ========== 密码 → 害羞闭眼 ==========
+        const pwdInput = document.getElementById('passwordInput');
+        const mascots = document.querySelectorAll('.mascot');
+
+        pwdInput.addEventListener('focus', () => {
+            isPwdFocus = true;
+            mascots.forEach((m, i) => setTimeout(() => m.classList.add('shy'), i * 80));
+        });
+        pwdInput.addEventListener('blur', () => {
+            isPwdFocus = false;
+            mascots.forEach((m, i) => setTimeout(() => {
+                m.classList.remove('shy');
+                m.querySelectorAll('.m-pupil').forEach(p => p.style.transform = 'translate(0,0)');
+            }, i * 60));
+        });
+
+        // ========== 密码可见切换 ==========
+        document.getElementById('pwdToggle').addEventListener('click', () => {
+            const isP = pwdInput.type === 'password';
+            pwdInput.type = isP ? 'text' : 'password';
+            document.getElementById('pwdToggle').textContent = isP ? '🙈' : '👁';
+        });
+
+        // ========== 提交动画 ==========
+        document.getElementById('loginForm').addEventListener('submit', () => {
+            const btn = document.getElementById('submitBtn');
+            btn.classList.add('loading');
+            btn.disabled = true;
+        });
+    })();
+    </script>
+</body>
+</html>

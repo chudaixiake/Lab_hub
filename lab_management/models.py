@@ -27,6 +27,8 @@ class UserProfile(models.Model):
     bio = models.TextField("个人简介", blank=True)
     avatar = models.ImageField("头像", upload_to=avatar_directory_path, blank=True, null=True, help_text="上传本地头像图片")
     personal_page = models.URLField("个人主页链接", blank=True, help_text="个人博客、GitHub 等")
+    email = models.EmailField("联系邮箱", blank=True, help_text="用于联系的邮箱地址")
+    phone = models.CharField("联系电话", max_length=20, blank=True, help_text="用于联系的电话号码")
     can_post_announcement = models.BooleanField("可发布公告", default=False)
 
     class Meta:
@@ -115,6 +117,7 @@ class Announcement(models.Model):
     title = models.CharField("标题", max_length=200)
     content = models.TextField("内容")
     is_pinned = models.BooleanField("置顶", default=False)
+    created_at = models.DateTimeField("发布时间", auto_now_add=True)
 
     class Meta:
         verbose_name = "公告"
