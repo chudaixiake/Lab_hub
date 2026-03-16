@@ -13,7 +13,7 @@
     <div class="card" {% if announcement.is_pinned %}style="border-left: 4px solid var(--color-accent);"{% endif %}>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <h3 style="color: var(--color-text-primary); font-weight: 600;">
-                {% if announcement.is_pinned %}<span class="icon icon-pushpin" style="vertical-align: middle; margin-right: 4px;"></span>{{ announcement.title }}{% endif %}
+                {% if announcement.is_pinned %}<span class="icon icon-pushpin" style="vertical-align: middle; margin-right: 4px;"></span>{% endif %}{{ announcement.title }}
             </h3>
             <span style="color: var(--color-text-tertiary); font-size: 0.875rem;">{{ announcement.created_at|date:"Y-m-d H:i" }}</span>
         </div>
@@ -27,6 +27,45 @@
             </div>
             {% endif %}
         </div>
+        
+        {% if announcement.comments_enabled %}
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px dashed var(--color-border-light);">
+            <h4 style="font-size: 0.9rem; color: var(--color-text-secondary); margin-bottom: 12px;">评论 ({{ announcement.comments_list|length }})</h4>
+            
+            {% if announcement.comments_list %}
+            <div style="margin-bottom: 16px;">
+                {% for comment in announcement.comments_list %}
+                <div style="background: var(--color-bg); padding: 10px 12px; border-radius: var(--radius-sm); margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-size: 0.85rem; font-weight: 500; color: var(--color-text-primary);">{{ comment.author.username }}</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 0.75rem; color: var(--color-text-tertiary);">{{ comment.created_at|date:"Y-m-d H:i" }}</span>
+                            {% if user == comment.author or user.is_superuser %}
+                            <a href="{% url 'delete_announcement_comment' comment.id %}" onclick="return confirm('确定删除这条评论？')" style="font-size: 0.75rem; color: var(--color-danger);">删除</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--color-text-secondary); margin: 0;">{{ comment.content }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            {% if user.is_authenticated %}
+            <form method="post" action="{% url 'add_announcement_comment' announcement.id %}" style="display: flex; gap: 8px;">
+                {% csrf_token %}
+                <input type="text" name="content" placeholder="写下你的评论..." required class="form-input" style="flex: 1;">
+                <button type="submit" class="btn btn-primary">评论</button>
+            </form>
+            {% else %}
+            <p style="font-size: 0.85rem; color: var(--color-text-tertiary);">登录后可以评论</p>
+            {% endif %}
+        </div>
+        {% else %}
+        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--color-border-light);">
+            <p style="font-size: 0.85rem; color: var(--color-text-tertiary); text-align: center;">该公告已关闭评论功能</p>
+        </div>
+        {% endif %}
     </div>
     {% endfor %}
 {% else %}

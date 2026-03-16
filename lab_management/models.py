@@ -97,14 +97,32 @@ class DailyPlan(models.Model):
     date = models.DateField("日期", default=timezone.localdate)
     content = models.TextField("计划内容")
     is_completed = models.BooleanField("是否完成", default=False)
+    is_public = models.BooleanField("公开", default=True, help_text="公开计划可被所有人查看，不公开仅自己可见")
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="sub_plans",
+        verbose_name="主计划",
+    )
+    order = models.PositiveIntegerField("排序", default=0)
 
     class Meta:
         verbose_name = "日常计划"
         verbose_name_plural = "日常计划"
-        ordering = ["-date", "-id"]
+        ordering = ["date", "order", "-id"]
 
     def __str__(self):
         return f"{self.user.username} | {self.date} | {'已完成' if self.is_completed else '未完成'}"
+    
+    @property
+    def is_main_plan(self):
+        return self.parent is None
+    
+    @property
+    def sub_plans_count(self):
+        return self.sub_plans.count()
 
 
 class Announcement(models.Model):
@@ -117,6 +135,7 @@ class Announcement(models.Model):
     title = models.CharField("标题", max_length=200)
     content = models.TextField("内容")
     is_pinned = models.BooleanField("置顶", default=False)
+    comments_enabled = models.BooleanField("开启评论", default=True, help_text="关闭后用户无法评论")
     created_at = models.DateTimeField("发布时间", auto_now_add=True)
 
     class Meta:
@@ -125,6 +144,31 @@ class Announcement(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class AnnouncementComment(models.Model):
+    announcement = models.ForeignKey(
+        Announcement,
+        on_delete=models.CASCADE,
+        related_name="comments",
+        verbose_name="公告",
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="announcement_comments",
+        verbose_name="评论者",
+    )
+    content = models.TextField("评论内容", max_length=1000)
+    created_at = models.DateTimeField("评论时间", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "公告评论"
+        verbose_name_plural = "公告评论"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.author.username} - {self.announcement.title[:20]}"
 
 
 class Achievement(models.Model):

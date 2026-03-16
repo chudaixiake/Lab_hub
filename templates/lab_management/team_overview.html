@@ -197,6 +197,112 @@
         font-size: 0.75rem;
     }
 
+    /* Team Plans Section Styles */
+    .team-plans-section {
+        padding: 20px 24px;
+    }
+    .user-plans-group {
+        margin-bottom: 20px;
+        border-bottom: 1px solid var(--color-border-light);
+        padding-bottom: 20px;
+    }
+    .user-plans-group:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    .user-plans-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+    .user-plans-avatar {
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--color-border-light);
+        flex-shrink: 0;
+    }
+    .user-plans-avatar-ph {
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+    }
+    .user-plans-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: var(--color-text-primary);
+    }
+    .user-plans-count {
+        font-size: 0.75rem;
+        color: var(--color-text-tertiary);
+        background: var(--color-bg);
+        padding: 2px 8px;
+        border-radius: 10px;
+    }
+    .user-plans-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-left: 46px;
+    }
+    .plan-item-mini {
+        background: var(--color-bg);
+        border-radius: var(--radius-sm);
+        padding: 12px 14px;
+        border-left: 3px solid var(--color-accent);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+        transition: all 0.2s ease;
+    }
+    .plan-item-mini:hover {
+        background: var(--color-surface-hover);
+        transform: translateX(4px);
+    }
+    .plan-item-mini.completed {
+        border-left-color: var(--color-success);
+    }
+    .plan-item-mini .plan-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+    .plan-item-mini .plan-date {
+        font-size: 0.78rem;
+        color: var(--color-text-tertiary);
+    }
+    .plan-item-mini .plan-sub-count {
+        font-size: 0.7rem;
+        color: var(--color-accent);
+        background: var(--color-accent-light);
+        padding: 1px 6px;
+        border-radius: 8px;
+    }
+    .plan-item-mini .plan-content {
+        font-size: 0.88rem;
+        color: var(--color-text-primary);
+        line-height: 1.5;
+    }
+    .plan-item-mini .plan-content.completed {
+        text-decoration: line-through;
+        color: var(--color-text-tertiary);
+    }
+    .plan-item-mini .plan-status {
+        font-size: 0.75rem;
+        flex-shrink: 0;
+    }
+
     .export-bar {
         background: var(--color-surface);
         border-radius: var(--radius-lg);
@@ -370,34 +476,52 @@
     {% endif %}
 </div>
 
-<!-- Recent Plans -->
+<!-- Team Member Plans -->
 <div class="overview-table-card anim-fade-up-3">
     <div class="overview-table-header">
-        <h2><span class="icon icon-clipboard" style="vertical-align: middle; margin-right: 4px;"></span>最新工作计划</h2>
+        <h2><span class="icon icon-clipboard" style="vertical-align: middle; margin-right: 4px;"></span>团队成员计划</h2>
     </div>
-    {% if all_plans %}
-    <div class="plan-timeline">
-        {% for plan in all_plans %}
-        <div class="tl-item">
-            <div class="tl-avatar">
-                {% if plan.user.profile.avatar %}
-                <img src="{{ plan.user.profile.avatar.url }}" alt="">
+    {% if members_with_plans %}
+    <div class="team-plans-section">
+        {% for member_data in members_with_plans %}
+        <div class="user-plans-group">
+            <div class="user-plans-header">
+                {% if member_data.profile.avatar %}
+                <img src="{{ member_data.profile.avatar.url }}" alt="" class="user-plans-avatar">
                 {% else %}
-                <div class="tl-avatar-ph">{{ plan.user.username|first|upper }}</div>
+                <div class="user-plans-avatar-ph">{{ member_data.profile.user.username|first|upper }}</div>
+                {% endif %}
+                <span class="user-plans-name">{{ member_data.profile.user.first_name|default:member_data.profile.user.username }}</span>
+                {% if member_data.plan_count > 0 %}
+                <span class="user-plans-count">{{ member_data.plan_count }} 个计划</span>
+                {% else %}
+                <span class="user-plans-count">暂无计划</span>
                 {% endif %}
             </div>
-            <div style="flex: 1; min-width: 0;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-weight: 600; font-size: 0.9rem; color: var(--color-accent);">{{ plan.user.first_name|default:plan.user.username }}</span>
-                        <span class="plan-date">{{ plan.date }}</span>
+            {% if member_data.plans %}
+            <div class="user-plans-list">
+                {% for plan in member_data.plans %}
+                <div class="plan-item-mini {% if plan.is_completed %}completed{% endif %}">
+                    <div style="flex: 1; min-width: 0;">
+                        <div class="plan-meta">
+                            <span class="plan-date">{{ plan.date }}</span>
+                            {% if plan.sub_plans.all %}
+                            <span class="plan-sub-count">{{ plan.sub_plans.all|length }} 子计划</span>
+                            {% endif %}
+                        </div>
+                        <div class="plan-content {% if plan.is_completed %}completed{% endif %}">{{ plan.content|truncatechars:80 }}</div>
                     </div>
                     <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
-                        {% if plan.is_completed %}✓ 已完成{% else %}进行中{% endif %}
+                        {% if plan.is_completed %}✓{% else %}○{% endif %}
                     </span>
                 </div>
-                <p style="color: var(--color-text-primary); font-size: 0.9rem; line-height: 1.6;">{{ plan.content }}</p>
+                {% endfor %}
             </div>
+            {% else %}
+            <div style="margin-left: 46px; padding: 12px; background: var(--color-bg); border-radius: var(--radius-sm); text-align: center;">
+                <span style="font-size: 0.85rem; color: var(--color-text-tertiary);">该成员还没有添加计划</span>
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
     </div>

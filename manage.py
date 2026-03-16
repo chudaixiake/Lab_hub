@@ -20,4 +20,13 @@ def main():
 
 if __name__ == '__main__':
     main()
-# python manage.py runserver 0.0.0.0:8000
+    # git push 推送到默认分支 
+    # git push origin main 推送到 main 分支 
+    # git push -u origin main 首次推送并设置上游 
+    # git push -f 强制推送（慎用） 
+    # git push --tags 推送标签 
+    # git pull 拉取并合并 
+    # git pull --rebase 拉取并 rebase 
+    # git status 查看状态 
+    # git log 查看提交历史
+    # python manage.py runserver 0.0.0.0:8000

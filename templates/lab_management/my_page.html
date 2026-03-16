@@ -103,18 +103,58 @@
         gap: 18px;
     }
 
-    .doc-item, .plan-card-item {
+    .doc-item {
         border: 1px solid var(--color-border-light);
         border-radius: var(--radius-md);
         padding: 16px 18px;
         margin-bottom: 12px;
         transition: all 0.25s ease;
     }
-    .doc-item:hover, .plan-card-item:hover {
+    .doc-item:hover {
         border-color: rgba(99,102,241,0.2);
         box-shadow: var(--shadow-sm);
     }
-    .doc-item:last-child, .plan-card-item:last-child { margin-bottom: 0; }
+    .doc-item:last-child { margin-bottom: 0; }
+
+    /* Plan list styles - same as plan_list.html */
+    .plan-list-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 20px;
+    }
+    .plan-list-item {
+        background: var(--color-surface);
+        border-radius: var(--radius-md);
+        padding: 20px 24px;
+        border: 1px solid var(--color-border-light);
+        box-shadow: var(--shadow-sm);
+        transition: all 0.25s ease;
+    }
+    .plan-list-item:hover {
+        border-color: rgba(99,102,241,0.2);
+        box-shadow: var(--shadow-md);
+        transform: translateX(4px);
+    }
+    .plan-list-item.completed {
+        opacity: 0.85;
+    }
+    .sub-plans {
+        margin-left: 20px;
+        border-left: 2px solid var(--color-accent-light);
+        padding-left: 12px;
+        margin-top: 12px;
+    }
+    .sub-plan-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+        border-bottom: 1px dashed var(--color-border);
+    }
+    .sub-plan-item:last-child {
+        border-bottom: none;
+    }
 
     .msg-item {
         display: flex;
@@ -330,22 +370,50 @@
 
             {% if plans %}
             <div class="section-label" style="margin-top: 24px;">我的计划</div>
-            {% for plan in plans %}
-            <div class="plan-card-item">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <span class="plan-date" style="font-size: 0.85rem;">{{ plan.date }}</span>
-                    <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
-                        {% if plan.is_completed %}✓ 已完成{% else %}待完成{% endif %}
-                    </span>
+            <div class="plan-list-wrap">
+                {% for plan in plans %}
+                <div class="plan-list-item {% if plan.is_completed %}completed{% endif %}">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="plan-date">{{ plan.date }}</span>
+                            {% if plan.sub_plans_count > 0 %}
+                            <span style="background: var(--color-accent); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">{{ plan.sub_plans_count }} 个子计划</span>
+                            {% endif %}
+                        </div>
+                        <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
+                            {% if plan.is_completed %}<span class="icon icon-check" style="vertical-align: middle; margin-right: 4px;"></span>已完成{% else %}<span class="icon icon-hourglass" style="vertical-align: middle; margin-right: 4px;"></span>进行中{% endif %}
+                        </span>
+                    </div>
+                    <div style="color: var(--color-text-primary); font-size: 0.93rem; line-height: 1.7; margin-bottom: 8px;">{{ plan.content }}</div>
+                    
+                    {% if plan.sub_plans.all %}
+                    <div class="sub-plans">
+                        {% for sub_plan in plan.sub_plans.all %}
+                        <div class="sub-plan-item">
+                            <span style="color: var(--color-accent);">↳</span>
+                            <span class="{% if sub_plan.is_completed %}completed{% endif %}" style="flex: 1; {% if sub_plan.is_completed %}text-decoration: line-through; color: var(--color-text-tertiary);{% endif %}">{{ sub_plan.content }}</span>
+                            <span class="plan-status {% if sub_plan.is_completed %}status-completed{% else %}status-pending{% endif %}" style="font-size: 0.75rem;">
+                                {% if sub_plan.is_completed %}✓{% else %}○{% endif %}
+                            </span>
+                            <button onclick="togglePlan({{ sub_plan.id }})" style="padding: 2px 6px; font-size: 0.7rem; border: none; background: var(--color-accent-light); border-radius: 4px; cursor: pointer;">切换</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <div style="margin-top: 10px; display: flex; gap: 8px;">
+                        <button onclick="togglePlan({{ plan.id }})" class="btn btn-sm" style="padding: 4px 12px; font-size: 0.8rem;">
+                            {% if plan.is_completed %}标记未完成{% else %}标记完成{% endif %}
+                        </button>
+                        <button onclick="addSubPlan({{ plan.id }})" class="btn btn-sm" style="padding: 4px 12px; font-size: 0.8rem; background: var(--color-accent);">
+                            + 子计划
+                        </button>
+                        <a href="{% url 'edit_plan' plan.id %}" class="btn btn-sm" style="padding: 4px 12px; font-size: 0.8rem;">编辑</a>
+                        <a href="{% url 'delete_plan' plan.id %}" class="btn btn-sm" style="padding: 4px 12px; font-size: 0.8rem; color: var(--color-danger);">删除</a>
+                    </div>
                 </div>
-                <p style="color: var(--color-text-primary); font-size: 0.9rem; line-height: 1.6; margin-bottom: 10px;">{{ plan.content }}</p>
-                <div style="display: flex; gap: 12px;">
-                    <a href="{% url 'toggle_plan' plan.id %}" class="link" style="font-size: 0.84rem;">{% if plan.is_completed %}标记未完成{% else %}标记完成{% endif %}</a>
-                    <a href="{% url 'edit_plan' plan.id %}" class="link" style="font-size: 0.84rem;">编辑</a>
-                    <a href="{% url 'delete_plan' plan.id %}" onclick="return confirm('确定删除？')" style="color: var(--color-danger); text-decoration: none; font-size: 0.84rem; font-weight: 500;">删除</a>
-                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
             {% endif %}
         </div>
     </div>
@@ -430,8 +498,39 @@
     </div>
 </div>
 
+<!-- Announcement -->
+{% if user.is_authenticated %}
+<div class="section-card anim-fade-up-5">
+    <div class="section-card-header">
+        <h2><span class="icon icon-bullhorn" style="vertical-align: middle; margin-right: 4px;"></span>发布公告</h2>
+    </div>
+    <div class="section-card-body">
+        <form method="post" action="{% url 'add_announcement' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label">标题</label>
+                <input type="text" name="title" required class="form-input" placeholder="公告标题">
+            </div>
+            <div class="form-group">
+                <label class="form-label">内容</label>
+                <textarea name="content" rows="4" required class="form-input" placeholder="公告内容..."></textarea>
+            </div>
+            {% if user.is_superuser %}
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.88rem;">
+                    <input type="checkbox" name="is_pinned" style="width: 16px; height: 16px; accent-color: var(--color-accent);">
+                    <span class="icon icon-pushpin" style="vertical-align: middle;"></span> 置顶公告
+                </label>
+            </div>
+            {% endif %}
+            <button type="submit" class="btn btn-primary">发布</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <!-- Messages -->
-<div class="section-card anim-fade-up-4" id="messages">
+<div class="section-card anim-fade-up-6" id="messages">
     <div class="section-card-header">
         <h2>💬 收到的留言</h2>
         {% if received_messages %}<span class="tag tag-primary">{{ received_messages|length }}</span>{% endif %}
@@ -467,34 +566,69 @@
     </div>
 </div>
 
-<!-- Announcement -->
-{% if user.is_authenticated %}
-<div class="section-card anim-fade-up-5">
-    <div class="section-card-header">
-        <h2><span class="icon icon-bullhorn" style="vertical-align: middle; margin-right: 4px;"></span>发布公告</h2>
-    </div>
-    <div class="section-card-body">
-        <form method="post" action="{% url 'add_announcement' %}">
+<!-- 添加子计划的弹窗 -->
+<div id="subPlanModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 24px; border-radius: 12px; max-width: 400px; width: 90%;">
+        <h3 style="margin-top: 0;">添加子计划</h3>
+        <form id="subPlanForm" method="post" action="{% url 'add_plan' %}">
             {% csrf_token %}
-            <div class="form-group">
-                <label class="form-label">标题</label>
-                <input type="text" name="title" required class="form-input" placeholder="公告标题">
+            <input type="hidden" name="parent_id" id="parentPlanId">
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 500;">子计划内容</label>
+                <textarea name="content" required style="width: 100%; padding: 10px; border: 1px solid var(--color-border); border-radius: 8px; resize: vertical; min-height: 80px; font-family: inherit;" placeholder="输入子计划内容..."></textarea>
             </div>
-            <div class="form-group">
-                <label class="form-label">内容</label>
-                <textarea name="content" rows="4" required class="form-input" placeholder="公告内容..."></textarea>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 500;">日期</label>
+                <input type="date" name="date" required style="width: 100%; padding: 10px; border: 1px solid var(--color-border); border-radius: 8px;">
             </div>
-            {% if user.is_superuser %}
-            <div class="form-group">
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.88rem;">
-                    <input type="checkbox" name="is_pinned" style="width: 16px; height: 16px; accent-color: var(--color-accent);">
-                    <span class="icon icon-pushpin" style="vertical-align: middle;"></span> 置顶公告
-                </label>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" onclick="closeSubPlanModal()" style="padding: 8px 16px; border: none; background: var(--color-bg); border-radius: 8px; cursor: pointer;">取消</button>
+                <button type="submit" style="padding: 8px 16px; border: none; background: var(--color-accent); color: white; border-radius: 8px; cursor: pointer;">保存</button>
             </div>
-            {% endif %}
-            <button type="submit" class="btn btn-primary">发布</button>
         </form>
     </div>
 </div>
-{% endif %}
+
+<script>
+function addSubPlan(planId) {
+    document.getElementById('parentPlanId').value = planId;
+    document.getElementById('subPlanModal').style.display = 'flex';
+    
+    // 设置默认日期为今天
+    var today = new Date().toISOString().split('T')[0];
+    document.querySelector('#subPlanForm input[name="date"]').value = today;
+}
+
+function closeSubPlanModal() {
+    document.getElementById('subPlanModal').style.display = 'none';
+}
+
+// 关闭弹窗点击背景
+document.getElementById('subPlanModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeSubPlanModal();
+    }
+});
+
+function togglePlan(planId) {
+    var csrftoken = document.cookie.match(/csrftoken=([^;]+)/);
+    if (csrftoken) csrftoken = csrftoken[1];
+    
+    fetch('/toggle/plan/' + planId + '/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || '操作失败');
+        }
+    });
+}
+</script>
 {% endblock %}

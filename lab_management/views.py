@@ -16,7 +16,7 @@ import base64
 import time
 from datetime import datetime
 import requests
-from .models import UserProfile, Document, DailyPlan, Announcement, Achievement, Message
+from .models import UserProfile, Document, DailyPlan, Announcement, AnnouncementComment, Achievement, Message
 
 
 class UserRegistrationForm(forms.ModelForm):
@@ -93,14 +93,59 @@ def user_logout(request):
 
 def home(request):
     members = UserProfile.objects.select_related('user').filter(user__is_superuser=False).all()
-    recent_plans = DailyPlan.objects.select_related('user').filter(user__is_superuser=False).all()[:10]
+    # 获取所有公开计划
+    public_plans = DailyPlan.objects.select_related('user').filter(user__is_superuser=False, parent__isnull=True, is_public=True)
+    # 获取所有计划（包括非公开的）
+    all_plans = DailyPlan.objects.select_related('user').filter(user__is_superuser=False, parent__isnull=True)
     announcements = Announcement.objects.all()[:3]
     announcement_count = Announcement.objects.count()
     # 只统计公开文档
     document_count = Document.objects.filter(is_public=True).count()
+    
+    # 获取当前用户的所有计划（公开+不公开）
+    if request.user.is_authenticated:
+        if request.user.is_superuser:
+            # 管理员可以看到所有计划
+            user_own_plans = all_plans
+        else:
+            # 普通用户只能看到自己的所有计划
+            user_own_plans = all_plans.filter(user=request.user)
+    else:
+        user_own_plans = []
+    
+    # 为每个成员构建计划数据
+    members_with_plans = []
+    for member in members:
+        # 当前用户/管理员显示所有计划，其他用户只显示公开计划
+        if request.user.is_authenticated and (member.user_id == request.user.id or request.user.is_superuser):
+            user_plans_all = list(user_own_plans.filter(user=member.user))
+        else:
+            user_plans_all = list(public_plans.filter(user=member.user))
+        
+        user_plans = user_plans_all[:3]  # 每个用户最多显示3个计划
+        
+        # 过滤出公开的子计划并附加到每个计划对象
+        for plan in user_plans:
+            # 当前用户/管理员的计划显示所有子计划，其他用户的只显示公开子计划
+            if request.user.is_authenticated and (plan.user_id == request.user.id or request.user.is_superuser):
+                plan.public_sub_plans = plan.sub_plans.all()
+            else:
+                plan.public_sub_plans = plan.sub_plans.filter(is_public=True)
+            plan.public_sub_plans_count = plan.public_sub_plans.count()
+        
+        members_with_plans.append({
+            'profile': member,
+            'plans': user_plans,
+            'plan_count': len(user_plans_all)
+        })
+    
+    # 统计近期公开计划总数
+    recent_plan_count = public_plans.count()
+    
     context = {
         'members': members,
-        'recent_plans': recent_plans,
+        'members_with_plans': members_with_plans,
+        'recent_plan_count': recent_plan_count,
         'announcements': announcements,
         'announcement_count': announcement_count,
         'document_count': document_count,
@@ -119,10 +164,49 @@ def plan_list(request):
     import calendar as cal
     
     view = request.GET.get('view', 'list')
-    plans = DailyPlan.objects.select_related('user').all()
+    
+    # 显示所有人公开的计划
+    main_plans = DailyPlan.objects.select_related('user').filter(parent__isnull=True, is_public=True).prefetch_related('sub_plans')
+    all_plans = DailyPlan.objects.select_related('user').filter(is_public=True)
+    
+    # 获取所有成员
+    members = UserProfile.objects.select_related('user').filter(user__is_superuser=False).all()
+    
+    # 为每个成员构建计划数据（包括没有计划的成员）
+    members_with_plans = []
+    for member in members:
+        user_plans = [p for p in main_plans if p.user_id == member.user_id]
+        
+        # 统计主计划完成情况
+        main_completed = len([p for p in user_plans if p.is_completed])
+        main_total = len(user_plans)
+        
+        # 统计子计划完成情况（只统计公开的子计划）
+        sub_completed = 0
+        sub_total = 0
+        for plan in user_plans:
+            for sub in plan.sub_plans.filter(is_public=True):
+                sub_total += 1
+                if sub.is_completed:
+                    sub_completed += 1
+        
+        # 总计（主计划 + 子计划）
+        total_completed = main_completed + sub_completed
+        total_count = main_total + sub_total
+        completion_rate = round(total_completed / total_count * 100, 1) if total_count > 0 else 0
+        
+        members_with_plans.append({
+            'profile': member,
+            'plans': user_plans,
+            'plan_count': total_count,
+            'completed_count': total_completed,
+            'completion_rate': completion_rate
+        })
     
     context = {
-        'plans': plans,
+        'plans': main_plans,
+        'all_plans': all_plans,
+        'members_with_plans': members_with_plans,
         'view': view
     }
     
@@ -153,8 +237,8 @@ def plan_list(request):
         # 获取当月天数
         month_days = cal.monthrange(year, month)[1]
         
-        # 获取当月所有计划
-        month_plans = plans.filter(date__year=year, date__month=month)
+        # 获取当月所有计划（包括子计划）
+        month_plans = all_plans.filter(date__year=year, date__month=month)
         
         # 构建日历数据
         calendar_days = []
@@ -186,31 +270,62 @@ def plan_list(request):
 
 def team_overview(request):
     members = UserProfile.objects.select_related('user').filter(user__is_superuser=False).all()
-    all_plans = DailyPlan.objects.select_related('user__profile').filter(user__is_superuser=False).all().order_by('-date')
+    # 只查询公开的计划
+    all_plans = DailyPlan.objects.select_related('user__profile').filter(user__is_superuser=False, parent__isnull=True, is_public=True).prefetch_related('sub_plans').order_by('-date')
     all_achievements = Achievement.objects.filter(is_public=True, user__is_superuser=False).select_related('user__profile').all()
     
     member_data = []
+    members_with_plans = []
+    
     for profile in members:
-        user_plans = all_plans.filter(user=profile.user)
-        completed_count = user_plans.filter(is_completed=True).count()
-        total_count = user_plans.count()
+        user_plans = list(all_plans.filter(user=profile.user))
+        
+        # 统计主计划完成情况（只统计公开的）
+        main_completed = len([p for p in user_plans if p.is_completed])
+        main_total = len(user_plans)
+        
+        # 统计子计划完成情况（只统计公开的子计划）
+        sub_completed = 0
+        sub_total = 0
+        for plan in user_plans:
+            for sub in plan.sub_plans.filter(is_public=True):
+                sub_total += 1
+                if sub.is_completed:
+                    sub_completed += 1
+        
+        # 总计（主计划 + 子计划）
+        total_completed = main_completed + sub_completed
+        total_count = main_total + sub_total
         
         user_documents = Document.objects.filter(user=profile.user, is_public=True)
         user_achievements = all_achievements.filter(user=profile.user)
         
+        completion_rate = round(total_completed / total_count * 100, 0) if total_count > 0 else 0
+        
+        # 用于成员表格（只显示前5个）
         member_data.append({
             'user': profile.user,
             'profile': profile,
             'plans': user_plans[:5],
-            'completed_count': completed_count,
+            'completed_count': total_completed,
             'total_count': total_count,
             'documents': user_documents,
             'achievements': user_achievements,
-            'completion_rate': round(completed_count / total_count * 100, 0) if total_count > 0 else 0,
+            'completion_rate': completion_rate,
+        })
+        
+        # 用于团队计划展示（显示所有公开计划）
+        members_with_plans.append({
+            'profile': profile,
+            'plans': user_plans,
+            'plan_count': total_count,
+            'completed_count': total_completed,
+            'completion_rate': completion_rate
         })
     
     context = {
         'member_data': member_data,
+        'members_with_plans': members_with_plans,
         'all_plans': all_plans[:20],
         'all_achievements': all_achievements[:30],
     }
@@ -221,7 +336,19 @@ def user_profile(request, username):
     user = get_object_or_404(User, username=username)
     profile = get_object_or_404(UserProfile, user=user)
     documents = Document.objects.filter(user=user, is_public=True)[:10]
-    plans = DailyPlan.objects.filter(user=user)[:10]
+    
+    # 判断查看者是否有权限查看所有计划
+    can_view_all = request.user.is_authenticated and (request.user.id == user.id or request.user.is_superuser)
+    
+    if can_view_all:
+        plans = list(DailyPlan.objects.filter(user=user, parent__isnull=True).prefetch_related('sub_plans')[:10])
+    else:
+        plans = list(DailyPlan.objects.filter(user=user, parent__isnull=True, is_public=True).prefetch_related('sub_plans')[:10])
+    
+    # 过滤子计划（只显示公开的）
+    for plan in plans:
+        plan.visible_sub_plans = plan.sub_plans.filter(is_public=True)
+    
     achievements = Achievement.objects.filter(user=user)[:10]
     messages_list = Message.objects.select_related('sender__profile').filter(receiver=user).order_by('-created_at')[:20]
     
@@ -244,8 +371,49 @@ def document_list(request):
 
 def announcement_list(request):
     announcements = Announcement.objects.select_related('author').all()
+    
+    # 为每个公告加载评论
+    for announcement in announcements:
+        announcement.comments_list = announcement.comments.all()[:10]
+    
     context = {'announcements': announcements}
     return render(request, 'lab_management/announcement_list.html', context)
+
+
+@login_required
+def add_announcement_comment(request, ann_id):
+    announcement = get_object_or_404(Announcement, id=ann_id)
+    
+    if not announcement.comments_enabled:
+        messages.error(request, '该公告已关闭评论功能')
+        return redirect('announcement_list')
+    
+    if request.method == 'POST':
+        content = request.POST.get('content', '').strip()
+        if content:
+            AnnouncementComment.objects.create(
+                announcement=announcement,
+                author=request.user,
+                content=content
+            )
+            messages.success(request, '评论成功！')
+        else:
+            messages.error(request, '评论内容不能为空')
+    
+    return redirect('announcement_list')
+
+
+@login_required
+def delete_announcement_comment(request, comment_id):
+    comment = get_object_or_404(AnnouncementComment, id=comment_id)
+    
+    if request.user == comment.author or request.user.is_superuser:
+        comment.delete()
+        messages.success(request, '评论已删除')
+    else:
+        messages.error(request, '您没有权限删除此评论')
+    
+    return redirect('announcement_list')
 
 
 @login_required
@@ -258,7 +426,7 @@ def my_page(request):
         profile = user.profile
     
     documents = Document.objects.filter(user=user)
-    plans = DailyPlan.objects.filter(user=user)
+    plans = DailyPlan.objects.filter(user=user, parent__isnull=True).prefetch_related('sub_plans')
     achievements = Achievement.objects.filter(user=user)
     received_messages = Message.objects.select_related('sender__profile').filter(receiver=user).order_by('-created_at')[:20]
     
@@ -480,16 +648,31 @@ def add_plan(request):
     if request.method == 'POST':
         content = request.POST.get('content')
         date = request.POST.get('date')
+        parent_id = request.POST.get('parent_id')
         
         if not content:
             messages.error(request, '请填写计划内容')
             return redirect('my_page')
         
+        # 如果有 parent_id，则是添加子计划
+        parent_plan = None
+        if parent_id:
+            parent_plan = get_object_or_404(DailyPlan, id=parent_id)
+            # 检查权限
+            if request.user != parent_plan.user and not request.user.is_superuser:
+                messages.error(request, '您没有权限为此计划添加子计划')
+                return redirect('plan_list')
+        
         DailyPlan.objects.create(
             user=request.user,
             content=content,
-            date=date or None
+            date=date or None,
+            parent=parent_plan  # 设置父计划
         )
+        
+        if parent_plan:
+            messages.success(request, '子计划添加成功！')
+            return redirect('plan_list')
         
         messages.success(request, '计划添加成功！')
         return redirect('my_page')
@@ -509,6 +692,7 @@ def edit_plan(request, plan_id):
         plan.content = request.POST.get('content')
         plan.date = request.POST.get('date') or None
         plan.is_completed = request.POST.get('is_completed') == 'on'
+        plan.is_public = request.POST.get('is_public') == 'on'
         plan.save()
         messages.success(request, '计划更新成功！')
         return redirect('my_page')
@@ -534,7 +718,8 @@ def toggle_plan(request, plan_id):
     if request.user == plan.user or request.user.is_superuser:
         plan.is_completed = not plan.is_completed
         plan.save()
-    return redirect('my_page')
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'error': '没有权限'})
 
 
 @login_required
@@ -543,6 +728,7 @@ def add_announcement(request):
         title = request.POST.get('title')
         content = request.POST.get('content')
         is_pinned = request.user.is_superuser and request.POST.get('is_pinned') == 'on'
+        comments_enabled = request.POST.get('comments_enabled') == 'on' if request.user.is_superuser else True
         
         if not title or not content:
             messages.error(request, '请填写标题和内容')
@@ -552,7 +738,8 @@ def add_announcement(request):
             author=request.user,
             title=title,
             content=content,
-            is_pinned=is_pinned
+            is_pinned=is_pinned,
+            comments_enabled=comments_enabled
         )
         
         messages.success(request, '公告发布成功！')
@@ -573,6 +760,8 @@ def edit_announcement(request, ann_id):
         announcement.title = request.POST.get('title')
         announcement.content = request.POST.get('content')
         announcement.is_pinned = request.user.is_superuser and request.POST.get('is_pinned') == 'on'
+        if request.user.is_superuser or request.user == announcement.author:
+            announcement.comments_enabled = request.POST.get('comments_enabled') == 'on'
         announcement.save()
         messages.success(request, '公告更新成功！')
         return redirect('announcement_list')

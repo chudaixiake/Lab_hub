@@ -216,7 +216,7 @@
     <a href="{% url 'plan_list' %}" class="stat-card" style="text-decoration: none; color: inherit; cursor: pointer;">
         <div class="stat-icon" style="background: var(--color-success-light); color: var(--color-success);"><span class="icon icon-doc"></span></div>
         <div class="stat-info">
-            <div class="stat-value">{{ recent_plans|length }}</div>
+            <div class="stat-value">{{ recent_plan_count }}</div>
             <div class="stat-label">近期计划</div>
         </div>
     </a>
@@ -298,28 +298,56 @@
         <div class="card-header">
             <h2 class="card-title">
                 <span class="card-title-icon" style="background: var(--color-success-light);"><span class="icon icon-doc"></span></span>
-                最新计划
+                团队成员计划
             </h2>
             <a href="{% url 'plan_list' %}" class="link" style="font-size: 0.85rem;">全部 →</a>
         </div>
-        {% if recent_plans %}
-            {% for plan in recent_plans %}
-            <div class="plan-item">
-                <div class="plan-header">
-                    <span class="plan-user">{{ plan.user.first_name|default:plan.user.username }}</span>
-                    <span class="plan-date">{{ plan.date }}</span>
+        {% if members_with_plans %}
+            {% for member_data in members_with_plans %}
+            <div class="user-plans-group" style="margin-bottom: 16px; border-bottom: 1px solid var(--color-border-light); padding-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                    {% if member_data.profile.avatar %}
+                    <img src="{{ member_data.profile.avatar.url }}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid var(--color-border-light);">
+                    {% else %}
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.85rem;">{{ member_data.profile.user.username|first|upper }}</div>
+                    {% endif %}
+                    <span style="font-weight: 600; font-size: 0.95rem; color: var(--color-text-primary);">{{ member_data.profile.user.first_name|default:member_data.profile.user.username }}</span>
+                    {% if member_data.plan_count > 0 %}
+                    <span style="font-size: 0.75rem; color: var(--color-text-tertiary); background: var(--color-bg); padding: 2px 8px; border-radius: 10px;">{{ member_data.plan_count }} 个计划</span>
+                    {% else %}
+                    <span style="font-size: 0.75rem; color: var(--color-text-tertiary); background: var(--color-bg); padding: 2px 8px; border-radius: 10px;">暂无计划</span>
+                    {% endif %}
                 </div>
-                <div class="plan-content">{{ plan.content|truncatechars:80 }}</div>
-                <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
-                    {% if plan.is_completed %}<span class="icon icon-check" style="vertical-align: middle; margin-right: 4px;"></span>已完成{% else %}<span class="icon icon-hourglass" style="vertical-align: middle; margin-right: 4px;"></span>进行中{% endif %}
-                </span>
+                {% if member_data.plans %}
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-left: 42px;">
+                    {% for plan in member_data.plans %}
+                    <div class="plan-item-mini" style="background: var(--color-bg); border-radius: var(--radius-sm); padding: 12px 14px; border-left: 3px solid {% if plan.is_completed %}var(--color-success){% else %}var(--color-accent){% endif %}; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <span style="font-size: 0.78rem; color: var(--color-text-tertiary);">{{ plan.date }}</span>
+                                {% if plan.public_sub_plans_count > 0 %}
+                                <span style="font-size: 0.7rem; color: var(--color-accent); background: var(--color-accent-light); padding: 1px 6px; border-radius: 8px;">{{ plan.public_sub_plans_count }} 子计划</span>
+                                {% endif %}
+                            </div>
+                            <div style="font-size: 0.88rem; color: var(--color-text-primary); line-height: 1.5; {% if plan.is_completed %}text-decoration: line-through; color: var(--color-text-tertiary);{% endif %}">{{ plan.content|truncatechars:60 }}</div>
+                        </div>
+                        <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}" style="font-size: 0.75rem; flex-shrink: 0;">
+                            {% if plan.is_completed %}✓{% else %}○{% endif %}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div style="margin-left: 42px; padding: 12px; background: var(--color-bg); border-radius: var(--radius-sm); text-align: center;">
+                    <span style="font-size: 0.85rem; color: var(--color-text-tertiary);">该成员还没有添加计划</span>
+                </div>
+                {% endif %}
             </div>
             {% endfor %}
         {% else %}
             <div class="empty-state" style="padding: 32px 16px;">
                 <div class="empty-state-icon"><span class="icon icon-doc"></span></div>
-                <p>暂无计划</p>
-                <a href="{% url 'my_page' %}" class="link" style="margin-top: 8px; display: inline-block;">添加第一个计划 →</a>
+                <p>暂无成员</p>
             </div>
         {% endif %}
     </div>

@@ -164,6 +164,45 @@
         font-size: 0.75rem;
     }
 
+    /* Plan list styles - same as my_page.html */
+    .plan-list-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .plan-list-item {
+        background: var(--color-surface);
+        border-radius: var(--radius-md);
+        padding: 16px 20px;
+        border: 1px solid var(--color-border-light);
+        box-shadow: var(--shadow-sm);
+        transition: all 0.25s ease;
+    }
+    .plan-list-item:hover {
+        border-color: rgba(99,102,241,0.2);
+        box-shadow: var(--shadow-md);
+    }
+    .plan-list-item.completed {
+        opacity: 0.85;
+    }
+    .sub-plans {
+        margin-left: 16px;
+        border-left: 2px solid var(--color-accent-light);
+        padding-left: 12px;
+        margin-top: 10px;
+    }
+    .sub-plan-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 0;
+        border-bottom: 1px dashed var(--color-border);
+        font-size: 0.85rem;
+    }
+    .sub-plan-item:last-child {
+        border-bottom: none;
+    }
+
     @media (max-width: 768px) {
         .up-hero { padding: 28px 24px; }
         .up-hero-content { flex-direction: column; text-align: center; }
@@ -232,8 +271,77 @@
 </div>
 {% endif %}
 
+<!-- Documents & Plans -->
+<div class="grid grid-2 anim-fade-up-4">
+    <div class="up-section">
+        <div class="up-section-header">
+            <h3><span class="icon icon-doc" style="vertical-align: middle; margin-right: 4px;"></span>上传的文档</h3>
+        </div>
+        <div class="up-section-body">
+            {% if documents %}
+            {% for doc in documents %}
+            <div style="border: 1px solid var(--color-border-light); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 10px; transition: all 0.2s;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-weight: 600; font-size: 0.9rem;">{{ doc.title }}</span>
+                    <span class="plan-date">{{ doc.uploaded_at|date:"m-d" }}</span>
+                </div>
+                <p style="color: var(--color-text-secondary); font-size: 0.83rem; margin-bottom: 8px;">{{ doc.description|default:"无描述" }}</p>
+                <a href="{% url 'download_document' doc.id %}" class="link" style="font-size: 0.84rem;">下载 ↓</a>
+            </div>
+            {% endfor %}
+            {% else %}
+            <p style="color: var(--color-text-tertiary); text-align: center; padding: 20px 0;">暂无文档</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="up-section">
+        <div class="up-section-header">
+            <h3><span class="icon icon-clipboard" style="vertical-align: middle; margin-right: 4px;"></span>最近计划</h3>
+        </div>
+        <div class="up-section-body">
+            {% if plans %}
+            <div class="plan-list-wrap">
+                {% for plan in plans %}
+                <div class="plan-list-item {% if plan.is_completed %}completed{% endif %}">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="plan-date">{{ plan.date }}</span>
+                            {% if plan.visible_sub_plans %}
+                            <span style="background: var(--color-accent); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">{{ plan.visible_sub_plans|length }} 个子计划</span>
+                            {% endif %}
+                        </div>
+                        <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
+                            {% if plan.is_completed %}<span class="icon icon-check" style="vertical-align: middle; margin-right: 4px;"></span>已完成{% else %}<span class="icon icon-hourglass" style="vertical-align: middle; margin-right: 4px;"></span>进行中{% endif %}
+                        </span>
+                    </div>
+                    <div style="color: var(--color-text-primary); font-size: 0.9rem; line-height: 1.6;">{{ plan.content }}</div>
+                    
+                    {% if plan.visible_sub_plans %}
+                    <div class="sub-plans">
+                        {% for sub_plan in plan.visible_sub_plans %}
+                        <div class="sub-plan-item">
+                            <span style="color: var(--color-accent);">↳</span>
+                            <span class="{% if sub_plan.is_completed %}completed{% endif %}" style="flex: 1; {% if sub_plan.is_completed %}text-decoration: line-through; color: var(--color-text-tertiary);{% endif %}">{{ sub_plan.content }}</span>
+                            <span class="plan-status {% if sub_plan.is_completed %}status-completed{% else %}status-pending{% endif %}" style="font-size: 0.7rem;">
+                                {% if sub_plan.is_completed %}✓{% else %}○{% endif %}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color: var(--color-text-tertiary); text-align: center; padding: 20px 0;">暂无计划</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
 <!-- Leave Message -->
-<div class="up-section anim-fade-up-2">
+<div class="up-section anim-fade-up-5">
     <div class="up-section-header">
         <h3>✉️ 给 {{ profile_user.first_name|default:profile_user.username }} 留言</h3>
     </div>
@@ -251,7 +359,7 @@
 </div>
 
 <!-- Message Wall -->
-<div class="up-section anim-fade-up-3">
+<div class="up-section anim-fade-up-6">
     <div class="up-section-header">
         <h3>💬 留言墙</h3>
         {% if messages_list %}<span class="tag tag-primary">{{ messages_list|length }}</span>{% endif %}
@@ -285,54 +393,6 @@
             <p>暂无留言，快来抢沙发！</p>
         </div>
         {% endif %}
-    </div>
-</div>
-
-<!-- Documents & Plans -->
-<div class="grid grid-2 anim-fade-up-4">
-    <div class="up-section">
-        <div class="up-section-header">
-            <h3><span class="icon icon-doc" style="vertical-align: middle; margin-right: 4px;"></span>上传的文档</h3>
-        </div>
-        <div class="up-section-body">
-            {% if documents %}
-            {% for doc in documents %}
-            <div style="border: 1px solid var(--color-border-light); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 10px; transition: all 0.2s;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                    <span style="font-weight: 600; font-size: 0.9rem;">{{ doc.title }}</span>
-                    <span class="plan-date">{{ doc.uploaded_at|date:"m-d" }}</span>
-                </div>
-                <p style="color: var(--color-text-secondary); font-size: 0.83rem; margin-bottom: 8px;">{{ doc.description|default:"无描述" }}</p>
-                <a href="{% url 'download_document' doc.id %}" class="link" style="font-size: 0.84rem;">下载 ↓</a>
-            </div>
-            {% endfor %}
-            {% else %}
-            <p style="color: var(--color-text-tertiary); text-align: center; padding: 20px 0;">暂无文档</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="up-section">
-        <div class="up-section-header">
-            <h3><span class="icon icon-clipboard" style="vertical-align: middle; margin-right: 4px;"></span>最近计划</h3>
-        </div>
-        <div class="up-section-body">
-            {% if plans %}
-            {% for plan in plans %}
-            <div style="border: 1px solid var(--color-border-light); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 10px; transition: all 0.2s;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <span class="plan-date" style="font-size: 0.85rem;">{{ plan.date }}</span>
-                    <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
-                        {% if plan.is_completed %}✓ 已完成{% else %}待完成{% endif %}
-                    </span>
-                </div>
-                <p style="color: var(--color-text-primary); font-size: 0.9rem; line-height: 1.6;">{{ plan.content }}</p>
-            </div>
-            {% endfor %}
-            {% else %}
-            <p style="color: var(--color-text-tertiary); text-align: center; padding: 20px 0;">暂无计划</p>
-            {% endif %}
-        </div>
     </div>
 </div>
 {% endblock %}
