@@ -8,6 +8,7 @@ from django.conf import settings
 from django.http import FileResponse, HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.db import models
+from django.utils import timezone
 import os
 import json
 import hmac
@@ -92,46 +93,67 @@ def user_logout(request):
 
 
 def home(request):
+    # 优化：使用预加载减少数据库查询
     members = UserProfile.objects.select_related('user').filter(user__is_superuser=False).all()
+    
+    # 获取所有计划（包括非公开的），预加载子计划
+    all_plans = DailyPlan.objects.select_related('user').prefetch_related('sub_plans').filter(
+        user__is_superuser=False, parent__isnull=True
+    )
+    
     # 获取所有公开计划
-    public_plans = DailyPlan.objects.select_related('user').filter(user__is_superuser=False, parent__isnull=True, is_public=True)
-    # 获取所有计划（包括非公开的）
-    all_plans = DailyPlan.objects.select_related('user').filter(user__is_superuser=False, parent__isnull=True)
+    public_plans = all_plans.filter(is_public=True)
+    
     announcements = Announcement.objects.all()[:3]
     announcement_count = Announcement.objects.count()
-    # 只统计公开文档
     document_count = Document.objects.filter(is_public=True).count()
     
-    # 获取当前用户的所有计划（公开+不公开）
+    # 获取当前用户的所有计划
     if request.user.is_authenticated:
         if request.user.is_superuser:
-            # 管理员可以看到所有计划
             user_own_plans = all_plans
         else:
-            # 普通用户只能看到自己的所有计划
             user_own_plans = all_plans.filter(user=request.user)
     else:
         user_own_plans = []
     
-    # 为每个成员构建计划数据
+    # 优化：一次性获取所有计划数据，避免循环内查询
+    # 构建用户ID到计划的映射
+    user_plans_map = {}
+    for plan in all_plans:
+        user_id = plan.user_id
+        if user_id not in user_plans_map:
+            user_plans_map[user_id] = []
+        user_plans_map[user_id].append(plan)
+    
+    # 构建公开计划映射
+    public_plans_map = {}
+    for plan in public_plans:
+        user_id = plan.user_id
+        if user_id not in public_plans_map:
+            public_plans_map[user_id] = []
+        public_plans_map[user_id].append(plan)
+    
+    # 为每个成员构建计划数据（使用预加载的数据）
     members_with_plans = []
     for member in members:
-        # 当前用户/管理员显示所有计划，其他用户只显示公开计划
-        if request.user.is_authenticated and (member.user_id == request.user.id or request.user.is_superuser):
-            user_plans_all = list(user_own_plans.filter(user=member.user))
+        user_id = member.user_id
+        
+        # 根据用户权限选择计划
+        if request.user.is_authenticated and (user_id == request.user.id or request.user.is_superuser):
+            user_plans_all = user_plans_map.get(user_id, [])
         else:
-            user_plans_all = list(public_plans.filter(user=member.user))
+            user_plans_all = public_plans_map.get(user_id, [])
         
-        user_plans = user_plans_all[:3]  # 每个用户最多显示3个计划
+        user_plans = user_plans_all[:3]
         
-        # 过滤出公开的子计划并附加到每个计划对象
+        # 使用预加载的子计划数据（避免额外查询）
         for plan in user_plans:
-            # 当前用户/管理员的计划显示所有子计划，其他用户的只显示公开子计划
             if request.user.is_authenticated and (plan.user_id == request.user.id or request.user.is_superuser):
                 plan.public_sub_plans = plan.sub_plans.all()
             else:
-                plan.public_sub_plans = plan.sub_plans.filter(is_public=True)
-            plan.public_sub_plans_count = plan.public_sub_plans.count()
+                plan.public_sub_plans = [sp for sp in plan.sub_plans.all() if sp.is_public]
+            plan.public_sub_plans_count = len(plan.public_sub_plans)
         
         members_with_plans.append({
             'profile': member,
@@ -140,7 +162,7 @@ def home(request):
         })
     
     # 统计近期公开计划总数
-    recent_plan_count = public_plans.count()
+    recent_plan_count = len(list(public_plans))
     
     context = {
         'members': members,
@@ -154,8 +176,25 @@ def home(request):
 
 
 def member_list(request):
-    members = UserProfile.objects.select_related('user').filter(user__is_superuser=False).all()
-    context = {'members': members}
+    # 获取所有非管理员成员并按分类筛选
+    all_members = UserProfile.objects.select_related('user').filter(user__is_superuser=False)
+    
+    # 博士成员
+    phd_members = all_members.filter(member_type='phd')
+    
+    # 硕士成员
+    master_members = all_members.filter(member_type='master')
+    master_grade1 = master_members.filter(grade='1')
+    master_grade2 = master_members.filter(grade='2')
+    master_grade3 = master_members.filter(grade='3')
+    
+    context = {
+        'phd_members': phd_members,
+        'master_members': master_members,
+        'master_grade1': master_grade1,
+        'master_grade2': master_grade2,
+        'master_grade3': master_grade3,
+    }
     return render(request, 'lab_management/member_list.html', context)
 
 
@@ -502,12 +541,20 @@ def download_document(request, doc_id):
         with open(doc.file.path, 'rb') as f:
             file_content = f.read()
         
-        # 使用原始文件名（避免中文文件名问题）
-        original_filename = doc.file.name.split('/')[-1]
+        # 使用文档标题作为下载文件名，保留原始扩展名
+        import os.path as op
+        # 获取原始文件的扩展名
+        original_ext = op.splitext(doc.file.name)[1]  # 如 .txt, .pdf
+        # 使用文档标题 + 原始扩展名
+        download_filename = f"{doc.title}{original_ext}"
+        # 处理文件名中的特殊字符
+        download_filename = download_filename.replace('/', '_').replace('\\', '_')
         
         # 创建下载响应
         response = HttpResponse(file_content, content_type='application/octet-stream')
-        response['Content-Disposition'] = f'attachment; filename="{original_filename}"'
+        # 使用 RFC 5987 编码支持中文文件名
+        from urllib.parse import quote
+        response['Content-Disposition'] = f"attachment; filename*=UTF-8''{quote(download_filename)}"
         response['Content-Length'] = len(file_content)
         
         return response
@@ -723,6 +770,50 @@ def toggle_plan(request, plan_id):
 
 
 @login_required
+@require_POST
+def add_sub_plan_ajax(request):
+    """AJAX 添加子计划"""
+    content = request.POST.get('content')
+    date = request.POST.get('date')
+    parent_id = request.POST.get('parent_id')
+    
+    if not content:
+        return JsonResponse({'success': False, 'error': '请填写计划内容'})
+    
+    if not parent_id:
+        return JsonResponse({'success': False, 'error': '缺少主计划ID'})
+    
+    parent_plan = get_object_or_404(DailyPlan, id=parent_id)
+    
+    # 检查权限
+    if request.user != parent_plan.user and not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': '您没有权限为此计划添加子计划'})
+    
+    # 创建子计划
+    sub_plan = DailyPlan.objects.create(
+        user=request.user,
+        content=content,
+        date=date or timezone.localdate(),
+        parent=parent_plan
+    )
+    
+    # 返回子计划数据
+    parent_end_date = parent_plan.end_date
+    return JsonResponse({
+        'success': True,
+        'sub_plan': {
+            'id': sub_plan.id,
+            'content': sub_plan.content,
+            'date': str(sub_plan.date),
+            'is_completed': sub_plan.is_completed,
+            'parent_id': parent_plan.id,
+            'parent_date_range': parent_plan.date_range,
+            'parent_end_date': str(parent_end_date) if parent_end_date else None,
+        }
+    })
+
+
+@login_required
 def add_announcement(request):
     if request.method == 'POST':
         title = request.POST.get('title')
@@ -790,6 +881,10 @@ def edit_profile(request):
         profile.personal_page = request.POST.get('personal_page', '')
         profile.email = request.POST.get('email', '')
         profile.phone = request.POST.get('phone', '')
+        
+        # 更新成员分类信息
+        profile.member_type = request.POST.get('member_type', 'master')
+        profile.grade = request.POST.get('grade', '1')
         
         # 处理头像上传
         if request.FILES.get('avatar'):
@@ -1025,7 +1120,7 @@ def get_lab_data_for_ai(question):
     
     # 检查是否询问公告相关
     if any(keyword in question_lower for keyword in ['公告', '通知', 'announcement']):
-        announcements = Announcement.objects.order_by('-id')[:5]
+        announcements = Announcement.objects.all()[:5]
         if announcements:
             data_context.append("【最新公告】")
             for ann in announcements:
@@ -1119,50 +1214,525 @@ def ai_chat(request):
         return JsonResponse({'error': '服务器错误：' + str(e)}, status=500)
 
 
+def create_excel_report(title, headers, data_rows, filename, statistics=None):
+    """创建Excel报告 - 统一格式"""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+    from openpyxl.utils import get_column_letter
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = title
+    
+    # 标题行
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
+    title_cell = ws.cell(row=1, column=1, value=title)
+    title_cell.font = Font(name='宋体', size=14, bold=True)
+    title_cell.alignment = Alignment(horizontal='center', vertical='center')
+    ws.row_dimensions[1].height = 30
+    
+    # 表头
+    header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
+    header_font = Font(name='宋体', size=11, bold=True, color='FFFFFF')
+    header_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=2, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+    ws.row_dimensions[2].height = 25
+    
+    # 数据行
+    data_font = Font(name='宋体', size=10)
+    data_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    
+    for row_idx, row_data in enumerate(data_rows, 3):
+        for col_idx, value in enumerate(row_data, 1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=value)
+            cell.font = data_font
+            cell.alignment = data_alignment
+            cell.border = Border(
+                left=Side(style='thin'),
+                right=Side(style='thin'),
+                top=Side(style='thin'),
+                bottom=Side(style='thin')
+            )
+    
+    # 统计信息
+    if statistics:
+        stat_row = len(data_rows) + 4
+        ws.merge_cells(start_row=stat_row, start_column=1, end_row=stat_row, end_column=len(headers))
+        stat_cell = ws.cell(row=stat_row, column=1, value=statistics)
+        stat_cell.font = Font(name='宋体', size=10, bold=True)
+        stat_cell.alignment = Alignment(horizontal='center', vertical='center')
+    
+    # 自动调整列宽
+    for col in range(1, len(headers) + 1):
+        column_letter = get_column_letter(col)
+        max_length = len(headers[col - 1])
+        for row in range(3, len(data_rows) + 3):
+            cell_value = ws.cell(row=row, column=col).value
+            if cell_value:
+                max_length = max(max_length, len(str(cell_value)))
+        adjusted_width = min(max_length + 4, 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    return wb
+
+
+def create_plan_excel_with_hierarchy(title, main_plans, filename, show_month=True):
+    """创建带有主计划+子计划层级结构的Excel报表"""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+    from openpyxl.utils import get_column_letter
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = title[:31]  # Excel工作表名称最多31个字符
+    
+    # 表头
+    if show_month:
+        headers = ['月份', '日期', '计划内容', '子计划', '状态']
+    else:
+        headers = ['日期', '计划内容', '子计划', '状态']
+    
+    # 标题行
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
+    title_cell = ws.cell(row=1, column=1, value=title)
+    title_cell.font = Font(name='宋体', size=14, bold=True)
+    title_cell.alignment = Alignment(horizontal='center', vertical='center')
+    ws.row_dimensions[1].height = 30
+    
+    # 表头样式
+    header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
+    header_font = Font(name='宋体', size=11, bold=True, color='FFFFFF')
+    header_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=2, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = thin_border
+    ws.row_dimensions[2].height = 25
+    
+    # 数据行样式
+    data_font = Font(name='宋体', size=10)
+    data_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    left_alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
+    
+    row_idx = 3
+    total_plans = 0
+    completed_plans = 0
+    
+    for plan in main_plans:
+        sub_plans = list(plan.sub_plans.all().order_by('date', 'order'))
+        month_str = f"{plan.date.month}月"
+        
+        # 计算日期范围
+        if sub_plans:
+            end_date = max(sub.date for sub in sub_plans)
+            if end_date == plan.date:
+                date_range = str(plan.date)
+            else:
+                date_range = f"{plan.date} 至 {end_date}"
+        else:
+            date_range = str(plan.date)
+        
+        # 子计划内容汇总
+        if sub_plans:
+            sub_content = '；'.join([sub.content for sub in sub_plans])
+        else:
+            sub_content = ''
+        
+        # 状态
+        status = '已完成' if plan.is_completed else '进行中'
+        if plan.is_completed:
+            completed_plans += 1
+        total_plans += 1
+        
+        # 主计划行
+        col_idx = 1
+        if show_month:
+            ws.cell(row=row_idx, column=col_idx, value=month_str).font = data_font
+            ws.cell(row=row_idx, column=col_idx).alignment = data_alignment
+            ws.cell(row=row_idx, column=col_idx).border = thin_border
+            col_idx += 1
+        
+        ws.cell(row=row_idx, column=col_idx, value=date_range).font = data_font
+        ws.cell(row=row_idx, column=col_idx).alignment = data_alignment
+        ws.cell(row=row_idx, column=col_idx).border = thin_border
+        col_idx += 1
+        
+        ws.cell(row=row_idx, column=col_idx, value=plan.content).font = data_font
+        ws.cell(row=row_idx, column=col_idx).alignment = left_alignment
+        ws.cell(row=row_idx, column=col_idx).border = thin_border
+        col_idx += 1
+        
+        ws.cell(row=row_idx, column=col_idx, value=sub_content).font = data_font
+        ws.cell(row=row_idx, column=col_idx).alignment = left_alignment
+        ws.cell(row=row_idx, column=col_idx).border = thin_border
+        col_idx += 1
+        
+        ws.cell(row=row_idx, column=col_idx, value=status).font = data_font
+        ws.cell(row=row_idx, column=col_idx).alignment = data_alignment
+        ws.cell(row=row_idx, column=col_idx).border = thin_border
+        
+        row_idx += 1
+        
+        # 子计划行
+        for sub in sub_plans:
+            col_idx = 1
+            if show_month:
+                ws.cell(row=row_idx, column=col_idx, value=month_str).font = data_font
+                ws.cell(row=row_idx, column=col_idx).alignment = data_alignment
+                ws.cell(row=row_idx, column=col_idx).border = thin_border
+                col_idx += 1
+            
+            ws.cell(row=row_idx, column=col_idx, value=str(sub.date)).font = data_font
+            ws.cell(row=row_idx, column=col_idx).alignment = data_alignment
+            ws.cell(row=row_idx, column=col_idx).border = thin_border
+            col_idx += 1
+            
+            ws.cell(row=row_idx, column=col_idx, value=f"  └ {sub.content}").font = data_font
+            ws.cell(row=row_idx, column=col_idx).alignment = left_alignment
+            ws.cell(row=row_idx, column=col_idx).border = thin_border
+            col_idx += 1
+            
+            ws.cell(row=row_idx, column=col_idx, value='').font = data_font
+            ws.cell(row=row_idx, column=col_idx).alignment = data_alignment
+            ws.cell(row=row_idx, column=col_idx).border = thin_border
+            col_idx += 1
+            
+            sub_status = '已完成' if sub.is_completed else '进行中'
+            ws.cell(row=row_idx, column=col_idx, value=sub_status).font = data_font
+            ws.cell(row=row_idx, column=col_idx).alignment = data_alignment
+            ws.cell(row=row_idx, column=col_idx).border = thin_border
+            
+            row_idx += 1
+            total_plans += 1
+            if sub.is_completed:
+                completed_plans += 1
+    
+    # 统计信息
+    completion_rate = (completed_plans / total_plans * 100) if total_plans > 0 else 0
+    stat_row = row_idx + 1
+    ws.merge_cells(start_row=stat_row, start_column=1, end_row=stat_row, end_column=len(headers))
+    stat_cell = ws.cell(row=stat_row, column=1, value=f'统计：总计 {total_plans} 项，已完成 {completed_plans} 项，完成率 {completion_rate:.1f}%')
+    stat_cell.font = Font(name='宋体', size=10, bold=True)
+    stat_cell.alignment = Alignment(horizontal='center', vertical='center')
+    
+    # 自动调整列宽
+    ws.column_dimensions['A'].width = 8 if show_month else 12
+    ws.column_dimensions['B'].width = 22 if show_month else 35
+    ws.column_dimensions['C'].width = 35 if show_month else 40
+    ws.column_dimensions['D'].width = 40 if show_month else 10
+    if show_month:
+        ws.column_dimensions['E'].width = 10
+    
+    return wb
+
+
+@login_required
 def export_data(request):
     """导出数据"""
+    from datetime import datetime, timedelta
+    from openpyxl import Workbook
+    from django.http import HttpResponse
+    
     export_type = request.GET.get('type', 'achievements')
     
     if export_type == 'achievements':
         achievements = Achievement.objects.all().select_related('user')
         
-        csv_data = "标题,类型,用户,日期,描述\n"
+        headers = ['标题', '类型', '用户', '日期', '描述']
+        data_rows = []
         for ach in achievements:
-            title = ach.title.replace(',', ';').replace('\n', ' ')
-            desc = (ach.description or '').replace(',', ';').replace('\n', ' ')
-            csv_data += f"{title},{ach.achievement_type},{ach.user.username},{ach.date or ''},{desc}\n"
+            data_rows.append([
+                ach.title,
+                ach.achievement_type,
+                ach.user.username,
+                str(ach.date) if ach.date else '',
+                ach.description or ''
+            ])
         
-        filename = "achievements.csv"
+        wb = create_excel_report(
+            '成果导出',
+            headers,
+            data_rows,
+            'achievements.xlsx',
+            statistics=f'总计: {len(data_rows)} 项'
+        )
+        
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=achievements.xlsx'
+        wb.save(response)
+        return response
         
     elif export_type == 'plans':
-        plans = DailyPlan.objects.all().select_related('user')
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+        from openpyxl.utils import get_column_letter
+        from calendar import month_name
         
-        csv_data = "用户,日期,内容,状态\n"
-        for plan in plans:
-            content = plan.content.replace(',', ';').replace('\n', ' ')
-            status = "已完成" if plan.is_completed else "进行中"
-            csv_data += f"{plan.user.username},{plan.date},{content},{status}\n"
+        # 获取所有主计划（parent为None）
+        main_plans = DailyPlan.objects.filter(parent__isnull=True).select_related('user').prefetch_related('sub_plans')
         
-        filename = "plans.csv"
+        wb = Workbook()
+        ws = wb.active
+        ws.title = '计划导出'
+        
+        # 标题行
+        headers = ['月份', '日期', '计划内容', '子计划', '状态']
+        ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
+        title_cell = ws.cell(row=1, column=1, value='年报 | 2026年')
+        title_cell.font = Font(name='宋体', size=14, bold=True)
+        title_cell.alignment = Alignment(horizontal='center', vertical='center')
+        ws.row_dimensions[1].height = 30
+        
+        # 表头样式
+        header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
+        header_font = Font(name='宋体', size=11, bold=True, color='FFFFFF')
+        header_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+        
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=2, column=col, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+            cell.border = thin_border
+        ws.row_dimensions[2].height = 25
+        
+        # 数据行样式
+        data_font = Font(name='宋体', size=10)
+        data_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        left_alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
+        
+        row_idx = 3
+        total_plans = 0
+        completed_plans = 0
+        
+        for plan in main_plans:
+            sub_plans = list(plan.sub_plans.all().order_by('date', 'order'))
+            month_str = f"{plan.date.month}月"
+            
+            # 计算日期范围
+            if sub_plans:
+                end_date = max(sub.date for sub in sub_plans)
+                if end_date == plan.date:
+                    date_range = str(plan.date)
+                else:
+                    date_range = f"{plan.date} 至 {end_date}"
+            else:
+                date_range = str(plan.date)
+            
+            # 子计划内容汇总
+            if sub_plans:
+                sub_content = '；'.join([sub.content for sub in sub_plans])
+            else:
+                sub_content = ''
+            
+            # 状态
+            status = '已完成' if plan.is_completed else '进行中'
+            if plan.is_completed:
+                completed_plans += 1
+            total_plans += 1
+            
+            # 主计划行
+            ws.cell(row=row_idx, column=1, value=month_str).font = data_font
+            ws.cell(row=row_idx, column=1).alignment = data_alignment
+            ws.cell(row=row_idx, column=1).border = thin_border
+            
+            ws.cell(row=row_idx, column=2, value=date_range).font = data_font
+            ws.cell(row=row_idx, column=2).alignment = data_alignment
+            ws.cell(row=row_idx, column=2).border = thin_border
+            
+            ws.cell(row=row_idx, column=3, value=plan.content).font = data_font
+            ws.cell(row=row_idx, column=3).alignment = left_alignment
+            ws.cell(row=row_idx, column=3).border = thin_border
+            
+            ws.cell(row=row_idx, column=4, value=sub_content).font = data_font
+            ws.cell(row=row_idx, column=4).alignment = left_alignment
+            ws.cell(row=row_idx, column=4).border = thin_border
+            
+            ws.cell(row=row_idx, column=5, value=status).font = data_font
+            ws.cell(row=row_idx, column=5).alignment = data_alignment
+            ws.cell(row=row_idx, column=5).border = thin_border
+            
+            row_idx += 1
+            
+            # 子计划行（如果有）
+            for sub in sub_plans:
+                ws.cell(row=row_idx, column=1, value=month_str).font = data_font
+                ws.cell(row=row_idx, column=1).alignment = data_alignment
+                ws.cell(row=row_idx, column=1).border = thin_border
+                
+                ws.cell(row=row_idx, column=2, value=str(sub.date)).font = data_font
+                ws.cell(row=row_idx, column=2).alignment = data_alignment
+                ws.cell(row=row_idx, column=2).border = thin_border
+                
+                ws.cell(row=row_idx, column=3, value=f"  └ {sub.content}").font = data_font
+                ws.cell(row=row_idx, column=3).alignment = left_alignment
+                ws.cell(row=row_idx, column=3).border = thin_border
+                
+                ws.cell(row=row_idx, column=4, value='').font = data_font
+                ws.cell(row=row_idx, column=4).alignment = data_alignment
+                ws.cell(row=row_idx, column=4).border = thin_border
+                
+                sub_status = '已完成' if sub.is_completed else '进行中'
+                ws.cell(row=row_idx, column=5, value=sub_status).font = data_font
+                ws.cell(row=row_idx, column=5).alignment = data_alignment
+                ws.cell(row=row_idx, column=5).border = thin_border
+                
+                row_idx += 1
+                total_plans += 1
+                if sub.is_completed:
+                    completed_plans += 1
+        
+        # 统计信息
+        completion_rate = (completed_plans / total_plans * 100) if total_plans > 0 else 0
+        stat_row = row_idx + 1
+        ws.merge_cells(start_row=stat_row, start_column=1, end_row=stat_row, end_column=len(headers))
+        stat_cell = ws.cell(row=stat_row, column=1, value=f'年度统计：总计 {total_plans} 项，已完成 {completed_plans} 项，完成率 {completion_rate:.1f}%')
+        stat_cell.font = Font(name='宋体', size=10, bold=True)
+        stat_cell.alignment = Alignment(horizontal='center', vertical='center')
+        
+        # 自动调整列宽
+        ws.column_dimensions['A'].width = 8
+        ws.column_dimensions['B'].width = 20
+        ws.column_dimensions['C'].width = 35
+        ws.column_dimensions['D'].width = 40
+        ws.column_dimensions['E'].width = 10
+        
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=plans_hierarchy.xlsx'
+        wb.save(response)
+        return response
         
     elif export_type == 'members':
         profiles = UserProfile.objects.select_related('user').filter(user__is_superuser=False)
         
-        csv_data = "用户名,姓名,研究方向,邮箱,电话\n"
+        headers = ['用户名', '姓名', '研究方向', '邮箱', '电话']
+        data_rows = []
         for profile in profiles:
-            name = profile.user.first_name or ''
-            topic = (profile.research_topic or '').replace(',', ';')
-            email = profile.email or ''
-            phone = profile.phone or ''
-            csv_data += f"{profile.user.username},{name},{topic},{email},{phone}\n"
+            data_rows.append([
+                profile.user.username,
+                profile.user.first_name or '',
+                profile.research_topic or '',
+                profile.email or '',
+                profile.phone or ''
+            ])
         
-        filename = "members.csv"
+        wb = create_excel_report(
+            '成员导出',
+            headers,
+            data_rows,
+            'members.xlsx',
+            statistics=f'总计: {len(data_rows)} 人'
+        )
+        
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=members.xlsx'
+        wb.save(response)
+        return response
+        
+    elif export_type == 'weekly':
+        today = timezone.localdate()
+        start_of_week = today - timedelta(days=today.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+        
+        # 只获取主计划（parent为None），预加载子计划
+        main_plans = DailyPlan.objects.filter(
+            user=request.user,
+            date__gte=start_of_week,
+            date__lte=end_of_week,
+            parent__isnull=True
+        ).select_related('user').prefetch_related('sub_plans').order_by('date', 'order')
+        
+        filename = f'周报_{start_of_week}_{end_of_week}.xlsx'
+        wb = create_plan_excel_with_hierarchy(
+            f'周报 | {start_of_week} 至 {end_of_week}',
+            main_plans,
+            filename,
+            show_month=False
+        )
+        
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        wb.save(response)
+        return response
+        
+    elif export_type == 'monthly':
+        today = timezone.localdate()
+        year = int(request.GET.get('year', today.year))
+        month = int(request.GET.get('month', today.month))
+        
+        # 只获取主计划（parent为None），预加载子计划
+        main_plans = DailyPlan.objects.filter(
+            user=request.user,
+            date__year=year,
+            date__month=month,
+            parent__isnull=True
+        ).select_related('user').prefetch_related('sub_plans').order_by('date', 'order')
+        
+        filename = f'月报_{year}年{month}月.xlsx'
+        wb = create_plan_excel_with_hierarchy(
+            f'月报 | {year}年{month}月',
+            main_plans,
+            filename,
+            show_month=False
+        )
+        
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        wb.save(response)
+        return response
+        
+    elif export_type == 'yearly':
+        today = timezone.localdate()
+        year = int(request.GET.get('year', today.year))
+        
+        # 只获取主计划（parent为None），预加载子计划
+        main_plans = DailyPlan.objects.filter(
+            user=request.user,
+            date__year=year,
+            parent__isnull=True
+        ).select_related('user').prefetch_related('sub_plans').order_by('date', 'order')
+        
+        filename = f'年报_{year}年.xlsx'
+        wb = create_plan_excel_with_hierarchy(
+            f'年报 | {year}年',
+            main_plans,
+            filename,
+            show_month=True
+        )
+        
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        wb.save(response)
+        return response
+        
     else:
-        return HttpResponse("无效的导出类型")
-    
-    response = HttpResponse(csv_data.encode('utf-8-sig'), content_type='text/csv; charset=utf-8-sig')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
+        return HttpResponse('无效的导出类型')
 
 
 @login_required

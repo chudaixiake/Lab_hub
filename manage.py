@@ -20,6 +20,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+    # $env:Path = "F:\miniconda3;F:\miniconda3\Scripts;F:\miniconda3\Library\bin;" + $env:Path 
     # git push 推送到默认分支 
     # git push origin main 推送到 main 分支 
     # git push -u origin main 首次推送并设置上游 
@@ -30,3 +31,4 @@ if __name__ == '__main__':
     # git status 查看状态 
     # git log 查看提交历史
     # python manage.py runserver 0.0.0.0:8000
+    # python manage.py runserver 0.0.0.0:8000 --insecure

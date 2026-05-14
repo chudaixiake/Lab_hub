@@ -13,13 +13,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-be+38jo8$d4t!#1b%x*)831wy(hqc%nca5%@d9(*wq-dfz%j4z'
 
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '1wo0118io8940.vicp.fun', '*']
 
 CSRF_TRUSTED_ORIGINS = [
     'http://1wo0118io8940.vicp.fun',
     'https://1wo0118io8940.vicp.fun',
+    'http://frp-six.com:21652',
+    'https://frp-six.com:21652',
 ]
 
 
@@ -35,6 +37,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -99,6 +102,16 @@ USE_TZ = True
 
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# 静态文件缓存和压缩配置
+WHITENOISE_MAX_AGE = 31536000  # 1年缓存
+WHITENOISE_GZIP = True
+WHITENOISE_BROTLI = True
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'

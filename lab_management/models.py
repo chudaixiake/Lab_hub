@@ -17,6 +17,19 @@ def avatar_directory_path(instance, filename):
 
 
 class UserProfile(models.Model):
+    # 成员类型选择
+    MEMBER_TYPE_CHOICES = [
+        ('master', '硕士'),
+        ('phd', '博士'),
+    ]
+    
+    # 年级选择
+    GRADE_CHOICES = [
+        ('1', '一年级'),
+        ('2', '二年级'),
+        ('3', '三年级'),
+    ]
+    
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -30,6 +43,22 @@ class UserProfile(models.Model):
     email = models.EmailField("联系邮箱", blank=True, help_text="用于联系的邮箱地址")
     phone = models.CharField("联系电话", max_length=20, blank=True, help_text="用于联系的电话号码")
     can_post_announcement = models.BooleanField("可发布公告", default=False)
+    
+    # 成员分类字段
+    member_type = models.CharField(
+        "成员类型",
+        max_length=10,
+        choices=MEMBER_TYPE_CHOICES,
+        default='master',
+        help_text="选择硕士或博士"
+    )
+    grade = models.CharField(
+        "年级",
+        max_length=5,
+        choices=GRADE_CHOICES,
+        default='1',
+        help_text="选择年级（硕士适用）"
+    )
 
     class Meta:
         verbose_name = "个人简介"
@@ -123,6 +152,33 @@ class DailyPlan(models.Model):
     @property
     def sub_plans_count(self):
         return self.sub_plans.count()
+    
+    @property
+    def end_date(self):
+        """获取计划的结束日期（如果主计划已完成则返回最后一个子计划日期，否则返回None表示至今）"""
+        if not self.is_main_plan:
+            return self.date
+        
+        # 如果主计划已完成，返回最后一个子计划的日期或主计划日期
+        if self.is_completed:
+            sub_plans_dates = list(self.sub_plans.values_list('date', flat=True))
+            if sub_plans_dates:
+                return max(sub_plans_dates + [self.date])
+            return self.date
+        
+        # 如果主计划未完成，返回None表示"至今"
+        return None
+    
+    @property
+    def date_range(self):
+        """返回时间跨度字符串"""
+        if self.is_main_plan:
+            end = self.end_date
+            if end:
+                return f"{self.date} ~ {end}"
+            else:
+                return f"{self.date} ~ 至今"
+        return str(self.date)
 
 
 class Announcement(models.Model):
@@ -141,6 +197,7 @@ class Announcement(models.Model):
     class Meta:
         verbose_name = "公告"
         verbose_name_plural = "公告"
+        ordering = ["-is_pinned", "-created_at"]
 
     def __str__(self):
         return self.title

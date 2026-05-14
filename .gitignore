@@ -1,10 +1,63 @@
+# Python
 *.pyc
 __pycache__/
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Django
 *.sqlite3
+db.sqlite3
 .env
+.env.local
+.env.*.local
+
+# Virtual Environment
 venv/
 env/
-*.log
-db.sqlite3
+ENV/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.trae/
+
+# Static & Media
 staticfiles/
 static/
+media/avatars/*/
+media/documents/*/
+!media/avatars/.gitkeep
+!media/documents/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local scripts
+monitor.bat
+monitor.ps1
+start_labhub.bat
+start_monitor.bat
+check_and_restart.ps1
+optimize_images.py
+performance_debug.py
+check_image_sizes.py
+fix_base_html.py
+install_deps.bat
+
+# Backup
+*.bak
+*.backup
+
+# Migration backups
+*/migrations/*.py.bak

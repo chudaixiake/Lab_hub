@@ -21,6 +21,7 @@ urlpatterns = [
     path('edit/plan/<int:plan_id>/', views.edit_plan, name='edit_plan'),
     path('delete/plan/<int:plan_id>/', views.delete_plan, name='delete_plan'),
     path('toggle/plan/<int:plan_id>/', views.toggle_plan, name='toggle_plan'),
+    path('api/subplan/add/', views.add_sub_plan_ajax, name='add_sub_plan_ajax'),
     path('add/announcement/', views.add_announcement, name='add_announcement'),
     path('edit/announcement/<int:ann_id>/', views.edit_announcement, name='edit_announcement'),
     path('delete/announcement/<int:ann_id>/', views.delete_announcement, name='delete_announcement'),

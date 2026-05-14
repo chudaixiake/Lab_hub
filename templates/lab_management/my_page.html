@@ -269,6 +269,21 @@
                     <input type="text" name="first_name" value="{{ user.first_name }}" class="form-input" placeholder="你的姓名">
                 </div>
                 <div class="form-group">
+                    <label class="form-label">成员类型</label>
+                    <select name="member_type" class="form-input" id="memberTypeSelect">
+                        <option value="master" {% if profile.member_type == 'master' %}selected{% endif %}>硕士研究生</option>
+                        <option value="phd" {% if profile.member_type == 'phd' %}selected{% endif %}>博士研究生</option>
+                    </select>
+                </div>
+                <div class="form-group" id="gradeSelectGroup">
+                    <label class="form-label">年级</label>
+                    <select name="grade" class="form-input">
+                        <option value="1" {% if profile.grade == '1' %}selected{% endif %}>一年级</option>
+                        <option value="2" {% if profile.grade == '2' %}selected{% endif %}>二年级</option>
+                        <option value="3" {% if profile.grade == '3' %}selected{% endif %}>三年级</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label class="form-label">研究课题</label>
                     <input type="text" name="research_topic" value="{{ profile.research_topic }}" class="form-input" placeholder="研究方向">
                 </div>
@@ -285,6 +300,21 @@
                     <input type="tel" name="phone" value="{{ profile.phone|default:'' }}" class="form-input" placeholder="手机号码">
                 </div>
             </div>
+            <script>
+                // 根据成员类型显示/隐藏年级选择
+                document.getElementById('memberTypeSelect').addEventListener('change', function() {
+                    var gradeGroup = document.getElementById('gradeSelectGroup');
+                    if (this.value === 'phd') {
+                        gradeGroup.style.display = 'none';
+                    } else {
+                        gradeGroup.style.display = 'block';
+                    }
+                });
+                // 初始化时检查
+                if (document.getElementById('memberTypeSelect').value === 'phd') {
+                    document.getElementById('gradeSelectGroup').style.display = 'none';
+                }
+            </script>
             <div class="form-group">
                 <label class="form-label">个人简介</label>
                 <textarea name="bio" rows="3" class="form-input" placeholder="介绍一下你自己...">{{ profile.bio|default:'' }}</textarea>
@@ -369,15 +399,27 @@
             </form>
 
             {% if plans %}
-            <div class="section-label" style="margin-top: 24px;">我的计划</div>
+            <div style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div class="section-label" style="margin: 0;">我的计划</div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <a href="{% url 'export_data' %}?type=weekly" class="btn btn-sm" style="padding: 6px 14px; font-size: 0.8rem; background: var(--color-accent); color: white;">导出周报</a>
+                    <a href="{% url 'export_data' %}?type=monthly" class="btn btn-sm" style="padding: 6px 14px; font-size: 0.8rem; background: var(--color-success); color: white;">导出月报</a>
+                    <a href="{% url 'export_data' %}?type=yearly" class="btn btn-sm" style="padding: 6px 14px; font-size: 0.8rem; background: var(--color-warning); color: white;">导出年报</a>
+                </div>
+            </div>
             <div class="plan-list-wrap">
                 {% for plan in plans %}
-                <div class="plan-list-item {% if plan.is_completed %}completed{% endif %}">
+                <div class="plan-list-item {% if plan.is_completed %}completed{% endif %}" data-plan-id="{{ plan.id }}">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                             <span class="plan-date">{{ plan.date }}</span>
+                            <span class="plan-date-range" data-plan-id="{{ plan.id }}" data-end-date="{{ plan.end_date }}" style="background: var(--color-success-light); color: var(--color-success); padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">
+                                {{ plan.date_range }}
+                            </span>
                             {% if plan.sub_plans_count > 0 %}
-                            <span style="background: var(--color-accent); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">{{ plan.sub_plans_count }} 个子计划</span>
+                            <span class="sub-plan-count" data-plan-id="{{ plan.id }}" style="background: var(--color-accent); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">{{ plan.sub_plans_count }} 个子计划</span>
+                            {% else %}
+                            <span class="sub-plan-count" data-plan-id="{{ plan.id }}" style="display: none; background: var(--color-accent); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">0 个子计划</span>
                             {% endif %}
                         </div>
                         <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
@@ -386,20 +428,20 @@
                     </div>
                     <div style="color: var(--color-text-primary); font-size: 0.93rem; line-height: 1.7; margin-bottom: 8px;">{{ plan.content }}</div>
                     
-                    {% if plan.sub_plans.all %}
-                    <div class="sub-plans">
+                    <div class="sub-plans" data-plan-id="{{ plan.id }}" {% if not plan.sub_plans.all %}style="display: none;"{% endif %}>
                         {% for sub_plan in plan.sub_plans.all %}
-                        <div class="sub-plan-item">
+                        <div class="sub-plan-item" data-sub-plan-id="{{ sub_plan.id }}">
                             <span style="color: var(--color-accent);">↳</span>
                             <span class="{% if sub_plan.is_completed %}completed{% endif %}" style="flex: 1; {% if sub_plan.is_completed %}text-decoration: line-through; color: var(--color-text-tertiary);{% endif %}">{{ sub_plan.content }}</span>
                             <span class="plan-status {% if sub_plan.is_completed %}status-completed{% else %}status-pending{% endif %}" style="font-size: 0.75rem;">
                                 {% if sub_plan.is_completed %}✓{% else %}○{% endif %}
                             </span>
                             <button onclick="togglePlan({{ sub_plan.id }})" style="padding: 2px 6px; font-size: 0.7rem; border: none; background: var(--color-accent-light); border-radius: 4px; cursor: pointer;">切换</button>
+                            <a href="{% url 'edit_plan' sub_plan.id %}" class="btn btn-sm" style="padding: 2px 8px; font-size: 0.7rem;">编辑</a>
+                            <a href="{% url 'delete_plan' sub_plan.id %}" class="btn btn-sm" style="padding: 2px 8px; font-size: 0.7rem; color: var(--color-danger);" onclick="return confirm('确定删除这个子计划？')">删除</a>
                         </div>
                         {% endfor %}
                     </div>
-                    {% endif %}
                     
                     <div style="margin-top: 10px; display: flex; gap: 8px;">
                         <button onclick="togglePlan({{ plan.id }})" class="btn btn-sm" style="padding: 4px 12px; font-size: 0.8rem;">
@@ -570,37 +612,48 @@
 <div id="subPlanModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
     <div style="background: white; padding: 24px; border-radius: 12px; max-width: 400px; width: 90%;">
         <h3 style="margin-top: 0;">添加子计划</h3>
-        <form id="subPlanForm" method="post" action="{% url 'add_plan' %}">
+        <form id="subPlanForm">
             {% csrf_token %}
             <input type="hidden" name="parent_id" id="parentPlanId">
             <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 6px; font-weight: 500;">子计划内容</label>
-                <textarea name="content" required style="width: 100%; padding: 10px; border: 1px solid var(--color-border); border-radius: 8px; resize: vertical; min-height: 80px; font-family: inherit;" placeholder="输入子计划内容..."></textarea>
+                <textarea name="content" id="subPlanContent" required style="width: 100%; padding: 10px; border: 1px solid var(--color-border); border-radius: 8px; resize: vertical; min-height: 80px; font-family: inherit;" placeholder="输入子计划内容..."></textarea>
             </div>
             <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 6px; font-weight: 500;">日期</label>
-                <input type="date" name="date" required style="width: 100%; padding: 10px; border: 1px solid var(--color-border); border-radius: 8px;">
+                <input type="date" name="date" id="subPlanDate" required style="width: 100%; padding: 10px; border: 1px solid var(--color-border); border-radius: 8px;">
             </div>
+            <div id="subPlanError" style="display: none; color: var(--color-danger); font-size: 0.85rem; margin-bottom: 12px; padding: 8px; background: rgba(239,68,68,0.1); border-radius: 6px;"></div>
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
                 <button type="button" onclick="closeSubPlanModal()" style="padding: 8px 16px; border: none; background: var(--color-bg); border-radius: 8px; cursor: pointer;">取消</button>
-                <button type="submit" style="padding: 8px 16px; border: none; background: var(--color-accent); color: white; border-radius: 8px; cursor: pointer;">保存</button>
+                <button type="submit" id="subPlanSubmitBtn" style="padding: 8px 16px; border: none; background: var(--color-accent); color: white; border-radius: 8px; cursor: pointer;">保存</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
+// 获取 CSRF Token
+function getCsrfToken() {
+    var match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? match[1] : '';
+}
+
 function addSubPlan(planId) {
     document.getElementById('parentPlanId').value = planId;
     document.getElementById('subPlanModal').style.display = 'flex';
+    document.getElementById('subPlanError').style.display = 'none';
     
     // 设置默认日期为今天
     var today = new Date().toISOString().split('T')[0];
-    document.querySelector('#subPlanForm input[name="date"]').value = today;
+    document.getElementById('subPlanDate').value = today;
+    document.getElementById('subPlanContent').focus();
 }
 
 function closeSubPlanModal() {
     document.getElementById('subPlanModal').style.display = 'none';
+    document.getElementById('subPlanContent').value = '';
+    document.getElementById('subPlanError').style.display = 'none';
 }
 
 // 关闭弹窗点击背景
@@ -610,24 +663,182 @@ document.getElementById('subPlanModal').addEventListener('click', function(e) {
     }
 });
 
-function togglePlan(planId) {
-    var csrftoken = document.cookie.match(/csrftoken=([^;]+)/);
-    if (csrftoken) csrftoken = csrftoken[1];
+// AJAX 提交子计划表单
+document.getElementById('subPlanForm').addEventListener('submit', function(e) {
+    e.preventDefault();
     
+    var parentId = document.getElementById('parentPlanId').value;
+    var content = document.getElementById('subPlanContent').value.trim();
+    var date = document.getElementById('subPlanDate').value;
+    var submitBtn = document.getElementById('subPlanSubmitBtn');
+    var errorDiv = document.getElementById('subPlanError');
+    
+    if (!content) {
+        errorDiv.textContent = '请填写子计划内容';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    // 禁用提交按钮
+    submitBtn.disabled = true;
+    submitBtn.textContent = '保存中...';
+    errorDiv.style.display = 'none';
+    
+    // 发送 AJAX 请求
+    fetch('/api/subplan/add/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCsrfToken(),
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'parent_id=' + encodeURIComponent(parentId) + 
+              '&content=' + encodeURIComponent(content) + 
+              '&date=' + encodeURIComponent(date)
+    })
+    .then(response => response.json())
+    .then(data => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '保存';
+        
+        if (data.success) {
+            // 添加子计划到 DOM
+            addSubPlanToDOM(data.sub_plan);
+            // 更新主计划的时间跨度
+            updatePlanDateRange(data.sub_plan.parent_id, data.sub_plan.parent_date_range, data.sub_plan.parent_end_date);
+            // 关闭弹窗
+            closeSubPlanModal();
+        } else {
+            errorDiv.textContent = data.error || '添加失败，请重试';
+            errorDiv.style.display = 'block';
+        }
+    })
+    .catch(error => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '保存';
+        errorDiv.textContent = '网络错误，请重试';
+        errorDiv.style.display = 'block';
+        console.error('Error:', error);
+    });
+});
+
+// 动态添加子计划到 DOM
+function addSubPlanToDOM(subPlan) {
+    var subPlansContainer = document.querySelector('.sub-plans[data-plan-id="' + subPlan.parent_id + '"]');
+    if (!subPlansContainer) return;
+    
+    // 显示子计划容器
+    subPlansContainer.style.display = 'block';
+    
+    // 创建子计划元素
+    var subPlanDiv = document.createElement('div');
+    subPlanDiv.className = 'sub-plan-item';
+    subPlanDiv.setAttribute('data-sub-plan-id', subPlan.id);
+    subPlanDiv.innerHTML = 
+        '<span style="color: var(--color-accent);">↳</span>' +
+        '<span style="flex: 1;">' + escapeHtml(subPlan.content) + '</span>' +
+        '<span class="plan-status status-pending" style="font-size: 0.75rem;">○</span>' +
+        '<button onclick="togglePlan(' + subPlan.id + ')" style="padding: 2px 6px; font-size: 0.7rem; border: none; background: var(--color-accent-light); border-radius: 4px; cursor: pointer;">切换</button>' +
+        '<a href="/edit/plan/' + subPlan.id + '/" class="btn btn-sm" style="padding: 2px 8px; font-size: 0.7rem;">编辑</a>' +
+        '<a href="/delete/plan/' + subPlan.id + '/" class="btn btn-sm" style="padding: 2px 8px; font-size: 0.7rem; color: var(--color-danger);" onclick="return confirm(\'确定删除这个子计划？\')">删除</a>';
+    
+    subPlansContainer.appendChild(subPlanDiv);
+    
+    // 更新子计划数量标签
+    updateSubPlanCount(subPlan.parent_id);
+}
+
+// 更新子计划数量
+function updateSubPlanCount(planId) {
+    var countSpan = document.querySelector('.sub-plan-count[data-plan-id="' + planId + '"]');
+    if (countSpan) {
+        var subPlansContainer = document.querySelector('.sub-plans[data-plan-id="' + planId + '"]');
+        var count = subPlansContainer ? subPlansContainer.querySelectorAll('.sub-plan-item').length : 0;
+        countSpan.textContent = count + ' 个子计划';
+        countSpan.style.display = 'inline-block';
+    }
+}
+
+// 更新主计划时间跨度
+function updatePlanDateRange(planId, dateRange, endDate) {
+    var dateRangeSpan = document.querySelector('.plan-date-range[data-plan-id="' + planId + '"]');
+    if (dateRangeSpan) {
+        dateRangeSpan.textContent = dateRange;
+        dateRangeSpan.setAttribute('data-end-date', endDate || '');
+    }
+}
+
+// HTML 转义函数
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function togglePlan(planId) {
     fetch('/toggle/plan/' + planId + '/', {
         method: 'POST',
         headers: {
-            'X-CSRFToken': csrftoken,
+            'X-CSRFToken': getCsrfToken(),
             'Content-Type': 'application/x-www-form-urlencoded',
         }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            location.reload();
+            // 先尝试更新子计划状态
+            var subPlanItem = document.querySelector('.sub-plan-item[data-sub-plan-id="' + planId + '"]');
+            if (subPlanItem) {
+                var statusSpan = subPlanItem.querySelector('.plan-status');
+                var contentSpan = subPlanItem.querySelector('span:nth-child(2)');
+                if (statusSpan && contentSpan) {
+                    // 切换状态显示
+                    var isCompleted = statusSpan.textContent.trim() === '✓';
+                    if (isCompleted) {
+                        statusSpan.textContent = '○';
+                        statusSpan.className = 'plan-status status-pending';
+                        contentSpan.style.textDecoration = 'none';
+                        contentSpan.style.color = 'inherit';
+                    } else {
+                        statusSpan.textContent = '✓';
+                        statusSpan.className = 'plan-status status-completed';
+                        contentSpan.style.textDecoration = 'line-through';
+                        contentSpan.style.color = 'var(--color-text-tertiary)';
+                    }
+                }
+                return;
+            }
+            
+            // 如果不是子计划，则更新主计划状态
+            var planItem = document.querySelector('.plan-list-item[data-plan-id="' + planId + '"]');
+            if (planItem) {
+                // 找到主计划的状态标签和按钮
+                var planStatusSpan = planItem.querySelector('.plan-status');
+                var toggleBtn = planItem.querySelector('button[onclick="togglePlan(' + planId + ')"]');
+                
+                if (planStatusSpan && toggleBtn) {
+                    var isPlanCompleted = planStatusSpan.classList.contains('status-completed');
+                    if (isPlanCompleted) {
+                        // 变为未完成
+                        planStatusSpan.className = 'plan-status status-pending';
+                        planStatusSpan.innerHTML = '<span class="icon icon-hourglass" style="vertical-align: middle; margin-right: 4px;"></span>进行中';
+                        toggleBtn.textContent = '标记完成';
+                        planItem.classList.remove('completed');
+                    } else {
+                        // 变为已完成
+                        planStatusSpan.className = 'plan-status status-completed';
+                        planStatusSpan.innerHTML = '<span class="icon icon-check" style="vertical-align: middle; margin-right: 4px;"></span>已完成';
+                        toggleBtn.textContent = '标记未完成';
+                        planItem.classList.add('completed');
+                    }
+                }
+            }
         } else {
             alert(data.error || '操作失败');
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('网络错误，请重试');
     });
 }
 </script>

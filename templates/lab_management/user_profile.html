@@ -225,6 +225,12 @@
             <div class="up-bio">{{ profile.bio }}</div>
             {% endif %}
             <div class="up-links">
+                <!-- 成员分类标签 -->
+                {% if profile.member_type == 'phd' %}
+                <span class="up-link-btn" style="background: rgba(139, 92, 246, 0.25); border-color: rgba(139, 92, 246, 0.4);"><span class="icon icon-graduation-cap" style="vertical-align: middle; margin-right: 4px;"></span>博士研究生</span>
+                {% else %}
+                <span class="up-link-btn" style="background: rgba(99, 102, 241, 0.25); border-color: rgba(99, 102, 241, 0.4);"><span class="icon icon-users" style="vertical-align: middle; margin-right: 4px;"></span>硕士研究生 · {% if profile.grade == '1' %}一年级{% elif profile.grade == '2' %}二年级{% elif profile.grade == '3' %}三年级{% endif %}</span>
+                {% endif %}
                 {% if profile.email %}
                 <a href="mailto:{{ profile.email }}" class="up-link-btn"><span class="icon icon-mail" style="vertical-align: middle; margin-right: 4px;"></span>{{ profile.email }}</a>
                 {% endif %}

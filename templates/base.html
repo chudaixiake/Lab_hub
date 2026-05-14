@@ -3,10 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="实验室管理系统 - 高效协作平台">
     <title>{% block title %}实验室主页{% endblock %}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- 使用本地系统字体，避免外部资源加载延迟 -->
+    <style>
+        :root {
+            --font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 
+                               'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+        * {
+            font-family: var(--font-family-base) !important;
+        }
+    </style>
     <style>
         :root {
             --color-bg: #f0f2f5;
@@ -2124,6 +2132,51 @@
             }
         });
     });
+    </script>
+    
+    <!-- 图片优化：WebP格式优先 + 懒加载 -->
+    <script>
+    // 立即执行：在图片加载前替换为WebP格式
+    (function() {
+        var images = document.querySelectorAll('img[src*=".jpg"], img[src*=".jpeg"], img[src*=".png"]');
+        images.forEach(function(img) {
+            var src = img.src;
+            var webpSrc = src.replace(/\.(jpg|jpeg|png)$/i, '.webp');
+            // 直接替换src为WebP
+            img.src = webpSrc;
+            // 如果WebP加载失败，回退到原格式
+            img.onerror = function() {
+                img.src = src;
+            };
+        });
+    })();
+    </script>
+    
+    <!-- 图片懒加载优化 -->
+    <script>
+    // 原生懒加载polyfill（用于不支持loading="lazy"的浏览器）
+    if ('loading' in HTMLImageElement.prototype) {
+        // 浏览器支持原生懒加载，将data-src转换为src
+        document.querySelectorAll('img[data-src]').forEach(function(img) {
+            img.src = img.dataset.src;
+            img.removeAttribute('data-src');
+        });
+    } else {
+        // 使用Intersection Observer实现懒加载
+        var lazyImageObserver = new IntersectionObserver(function(entries, observer) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    var lazyImage = entry.target;
+                    lazyImage.src = lazyImage.dataset.src;
+                    lazyImage.removeAttribute('data-src');
+                    lazyImageObserver.unobserve(lazyImage);
+                }
+            });
+        });
+        document.querySelectorAll('img[data-src]').forEach(function(img) {
+            lazyImageObserver.observe(img);
+        });
+    }
     </script>
 </body>
 </html>
