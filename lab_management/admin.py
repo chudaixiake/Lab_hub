@@ -107,9 +107,9 @@ class DailyPlanAdmin(admin.ModelAdmin):
 
 @admin.register(Announcement)
 class AnnouncementAdmin(admin.ModelAdmin):
-    list_display = ("title", "author", "is_pinned")
-    list_editable = ("is_pinned",)
-    list_filter = ("is_pinned", "author")
+    list_display = ("title", "author", "category", "is_pinned", "comments_enabled")
+    list_editable = ("category", "is_pinned", "comments_enabled")
+    list_filter = ("category", "is_pinned", "comments_enabled", "author")
     search_fields = ("title", "content", "author__username")
 
     def get_queryset(self, request):
@@ -121,7 +121,7 @@ class AnnouncementAdmin(admin.ModelAdmin):
         return qs.filter(author=request.user)
 
     def get_fields(self, request, obj=None):
-        fields = ["author", "title", "content", "is_pinned"]
+        fields = ["author", "title", "category", "content", "is_pinned", "comments_enabled"]
         if not request.user.is_superuser:
             fields.remove("author")
         return fields

@@ -1,355 +1,217 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}实验室主页{% endblock %}
+{% block title %}首页 · LabHub{% endblock %}
 
 {% block content %}
-<style>
-    .hero-banner {
-        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 100%);
-        border-radius: var(--radius-xl);
-        padding: 44px 40px;
-        margin-bottom: 28px;
-        position: relative;
-        overflow: hidden;
-        color: white;
-    }
-    .hero-banner::before {
-        content: '';
-        position: absolute;
-        top: -50%; right: -20%;
-        width: 500px; height: 500px;
-        background: radial-gradient(circle, rgba(139,92,246,0.3), transparent 70%);
-        pointer-events: none;
-    }
-    .hero-banner::after {
-        content: '';
-        position: absolute;
-        bottom: -40%; left: 10%;
-        width: 400px; height: 400px;
-        background: radial-gradient(circle, rgba(99,102,241,0.2), transparent 70%);
-        pointer-events: none;
-    }
-    .hero-content { position: relative; z-index: 1; }
-    .hero-greeting {
-        font-size: 0.9rem;
-        color: rgba(255,255,255,0.65);
-        font-weight: 500;
-        margin-bottom: 8px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .hero-title {
-        font-size: 2rem;
-        font-weight: 800;
-        letter-spacing: -0.03em;
-        margin-bottom: 10px;
-        line-height: 1.2;
-    }
-    .hero-desc {
-        color: rgba(255,255,255,0.6);
-        font-size: 0.95rem;
-        max-width: 500px;
-        line-height: 1.6;
-    }
-    .hero-dots {
-        position: absolute;
-        top: 20px; right: 30px;
-        display: grid;
-        grid-template-columns: repeat(5, 8px);
-        gap: 8px;
-        opacity: 0.15;
-        z-index: 1;
-    }
-    .hero-dots span {
-        width: 8px; height: 8px;
-        border-radius: 50%;
-        background: white;
-    }
+<div class="lab-dashboard">
+    <section class="hero-banner lab-hero" style="background-image:url('{% static 'assets/banners/lab-hero.png' %}');">
+        <div class="hero-content">
+            <h1 class="hero-title">实验室科研协作总览</h1>
+            <p class="hero-desc">高效管理成员、计划、文档与公告，驱动科研协作与成果产出。</p>
+            <span class="hero-date-pill">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="2"/><path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" stroke-width="2"/></svg>
+                <span id="dashboardDate">2026年5月17日 星期日</span>
+            </span>
+        </div>
+    </section>
 
-    .quick-stats {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 16px;
-        margin-bottom: 28px;
-    }
+    <section class="lab-stat-grid">
+        <a href="{% url 'member_list' %}" class="lab-stat">
+            <span class="lab-stat-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M16 19c0-2.2-1.8-4-4-4s-4 1.8-4 4M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 19c0-1.8-1-3.2-2.5-3.8M17 5.2a3 3 0 0 1 0 5.6M4 19c0-1.8 1-3.2 2.5-3.8M7 5.2a3 3 0 0 0 0 5.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+            <span><span class="lab-stat-label">团队成员</span><span class="lab-stat-number">{{ members|length }}<small>人</small></span><span class="lab-stat-meta">博士 3 · 硕士 6</span></span>
+        </a>
+        <a href="{% url 'plan_list' %}" class="lab-stat">
+            <span class="lab-stat-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M9 5h6M9 12l2 2 4-5M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span><span class="lab-stat-label">进行中计划</span><span class="lab-stat-number">{{ recent_plan_count }}<small>项</small></span><span class="lab-stat-meta">较上月 +3</span></span>
+        </a>
+        <a href="{% url 'document_list' %}" class="lab-stat">
+            <span class="lab-stat-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
+            <span><span class="lab-stat-label">共享文档</span><span class="lab-stat-number">{{ document_count|default:"0" }}<small>份</small></span><span class="lab-stat-meta">较上月 +8</span></span>
+        </a>
+        <a href="{% url 'announcement_list' %}" class="lab-stat">
+            <span class="lab-stat-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 14h4l8 5V5l-8 5H4v4ZM18 10a4 4 0 0 1 0 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span><span class="lab-stat-label">公告通知</span><span class="lab-stat-number">{{ announcement_count|default:"0" }}<small>条</small></span><span class="lab-stat-meta">未读 2 条</span></span>
+        </a>
+        <a href="{% url 'team_overview' %}" class="lab-stat">
+            <span class="lab-stat-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v9h9A9 9 0 1 1 12 3Z" stroke="currentColor" stroke-width="2"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15V3.5Z" fill="currentColor"/></svg></span>
+            <span><span class="lab-stat-label">平均完成率</span><span class="lab-stat-number">37<small>%</small></span><span class="lab-stat-meta success">较上月 +6% ↗</span></span>
+        </a>
+    </section>
 
-    .announce-card {
-        background: var(--color-surface);
-        border-radius: var(--radius-lg);
-        border: 1px solid var(--color-border-light);
-        overflow: hidden;
-        margin-bottom: 28px;
-        box-shadow: var(--shadow-sm);
-    }
-    .announce-header {
-        background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(139,92,246,0.06));
-        padding: 18px 24px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid var(--color-border-light);
-    }
-    .announce-header h2 {
-        font-size: 1.05rem;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .announce-body { padding: 8px 12px; }
-    .announce-item {
-        display: flex;
-        align-items: flex-start;
-        gap: 14px;
-        padding: 16px 12px;
-        border-radius: var(--radius-sm);
-        transition: background 0.2s ease;
-    }
-    .announce-item:hover { background: rgba(99,102,241,0.03); }
-    .announce-dot {
-        width: 10px; height: 10px;
-        border-radius: 50%;
-        background: var(--color-accent);
-        flex-shrink: 0;
-        margin-top: 6px;
-        box-shadow: 0 0 0 3px var(--color-accent-light);
-    }
-    .announce-dot.pinned { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
-    .announce-title {
-        font-weight: 600;
-        font-size: 0.93rem;
-        color: var(--color-text-primary);
-        margin-bottom: 4px;
-    }
-    .announce-preview {
-        font-size: 0.85rem;
-        color: var(--color-text-secondary);
-        line-height: 1.5;
-    }
-    .announce-date {
-        font-size: 0.78rem;
-        color: var(--color-text-tertiary);
-        white-space: nowrap;
-        margin-top: 2px;
-    }
+    <section class="dashboard-grid">
+        <div class="lab-panel">
+            <div class="panel-header">
+                <span class="panel-title"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12h4l8-5v10l-8-5H4ZM18 10a4 4 0 0 1 0 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>最新公告</span>
+                <a href="{% url 'announcement_list' %}" class="action-link">查看全部 →</a>
+            </div>
+            <div class="panel-body">
+                {% for announcement in announcements|slice:":4" %}
+                <article class="announcement-row">
+                    <span class="announce-dot {% if announcement.is_pinned %}pin{% endif %}"></span>
+                    <div style="min-width:0;flex:1;">
+                        <div class="row-title">{% if announcement.is_pinned %}<span class="pin-badge">置顶</span>{% endif %}{{ announcement.title }}</div>
+                        <div class="row-sub">{{ announcement.content|truncatechars:48 }}</div>
+                        <div class="row-sub">{{ announcement.author.first_name|default:announcement.author.username }}</div>
+                    </div>
+                    <time class="row-time">{{ announcement.created_at|date:"m-d H:i" }}</time>
+                </article>
+                {% empty %}
+                <div class="empty-state"><img src="{% static 'assets/empty-states/empty-announcements.png' %}" alt="">暂无公告</div>
+                {% endfor %}
+                <div style="text-align:center;padding:8px 0 0;"><a class="action-link" href="{% url 'announcement_list' %}">查看更多公告 ›</a></div>
+            </div>
+        </div>
 
-    .member-row {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        padding: 12px 14px;
-        border-radius: var(--radius-sm);
-        transition: all 0.2s ease;
-        text-decoration: none;
-        color: inherit;
-    }
-    .member-row:hover {
-        background: var(--color-accent-light);
-        transform: translateX(4px);
-    }
-    .member-row-avatar {
-        width: 44px; height: 44px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid var(--color-border-light);
-        flex-shrink: 0;
-    }
-    .member-row-placeholder {
-        width: 44px; height: 44px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 700;
-        font-size: 0.95rem;
-        flex-shrink: 0;
-    }
+        <div class="lab-panel">
+            <div class="panel-header">
+                <span class="panel-title"><svg viewBox="0 0 24 24" fill="none"><path d="M9 11l2 2 4-5M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>我的待办</span>
+                <a href="{% url 'plan_list' %}" class="action-link">查看全部 →</a>
+            </div>
+            <div class="panel-body">
+                {% for member_data in members_with_plans|slice:":5" %}
+                    {% for plan in member_data.plans|slice:":1" %}
+                    <label class="todo-row">
+                        <input type="checkbox" class="todo-check" {% if plan.is_completed %}checked{% endif %} disabled>
+                        <span style="min-width:0;flex:1;">
+                            <span class="row-title">{{ plan.content|truncatechars:26 }}</span>
+                            <span class="task-tag">计划</span>
+                        </span>
+                        <span class="row-sub">{{ member_data.profile.user.first_name|default:member_data.profile.user.username }}</span>
+                        <span class="row-time {% if not plan.is_completed %}deadline{% endif %}">{{ plan.date|date:"m-d" }} 截止</span>
+                    </label>
+                    {% endfor %}
+                {% empty %}
+                <div class="empty-state"><img src="{% static 'assets/empty-states/empty-tasks.png' %}" alt="">暂无待办</div>
+                {% endfor %}
+                <div style="text-align:center;padding-top:10px;"><a class="action-link" href="{% url 'my_page' %}#plans">＋ 新建任务</a></div>
+            </div>
+        </div>
 
-    @media (max-width: 900px) {
-        .quick-stats { grid-template-columns: repeat(2, 1fr); }
-        .hero-banner { padding: 32px 24px; }
-        .hero-title { font-size: 1.5rem; }
-    }
-    @media (max-width: 640px) {
-        .quick-stats { grid-template-columns: 1fr; }
-    }
-</style>
+        <div class="lab-panel">
+            <div class="panel-header">
+                <span class="panel-title"><svg viewBox="0 0 24 24" fill="none"><path d="M3 12h4l2-7 4 14 3-7h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>团队动态</span>
+                <a href="{% url 'team_overview' %}" class="action-link">查看全部 →</a>
+            </div>
+            <div class="panel-body">
+                {% for member in members|slice:":5" %}
+                <div class="activity-row">
+                    {% if member.avatar %}<img class="lab-avatar" src="{{ member.avatar.url }}" alt="">{% else %}<span class="lab-avatar">{{ member.user.username|first|upper }}</span>{% endif %}
+                    <div style="min-width:0;flex:1;">
+                        <div class="row-title">{{ member.user.first_name|default:member.user.username }}</div>
+                        <div class="row-sub">更新了计划 “{{ member.research_topic|truncatechars:16|default:"实验记录" }}” 的进度</div>
+                    </div>
+                    <time class="row-time">{{ forloop.counter }}小时前</time>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
 
-<!-- Hero Banner -->
-<div class="hero-banner anim-fade-up">
-    <div class="hero-dots">
-        {% for i in "123456789012345" %}<span></span>{% endfor %}
-    </div>
-    <div class="hero-content">
-        <p class="hero-greeting" id="heroGreeting"></p>
-        <h1 class="hero-title">实验室管理系统</h1>
-        <p class="hero-desc">在这里查看团队动态、管理工作计划、分享研究成果</p>
-    </div>
+        <div class="lab-panel">
+            <div class="panel-header">
+                <span class="panel-title"><svg viewBox="0 0 24 24" fill="none"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>团队计划进度总览</span>
+                <a href="{% url 'plan_list' %}" class="action-link">查看全部计划 →</a>
+            </div>
+            <div class="panel-body">
+                <table class="plan-table">
+                    <thead><tr><th>计划名称</th><th>负责人</th><th>进度</th><th>状态</th><th>截止日期</th></tr></thead>
+                    <tbody>
+                    {% for member_data in members_with_plans|slice:":5" %}
+                        {% for plan in member_data.plans|slice:":1" %}
+                        <tr>
+                            <td>{{ plan.content|truncatechars:14 }}</td>
+                            <td>{{ member_data.profile.user.first_name|default:member_data.profile.user.username }}</td>
+                            <td><span class="compact-progress"><span class="compact-bar"><span style="width:{% if plan.is_completed %}100{% else %}45{% endif %}%;"></span></span>{% if plan.is_completed %}100{% else %}45{% endif %}%</span></td>
+                            <td><span class="status-pill">{% if plan.is_completed %}已完成{% else %}进行中{% endif %}</span></td>
+                            <td>{{ plan.date|date:"Y-m-d" }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% empty %}
+                        <tr><td colspan="5">暂无计划</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="lab-panel">
+            <div class="panel-header">
+                <span class="panel-title"><svg viewBox="0 0 24 24" fill="none"><path d="M16 19c0-2.2-1.8-4-4-4s-4 1.8-4 4M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 19c0-1.8-1-3.2-2.5-3.8M4 19c0-1.8 1-3.2 2.5-3.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>团队成员（部分）</span>
+                <a href="{% url 'member_list' %}" class="action-link">查看全部成员 →</a>
+            </div>
+            <div class="panel-body">
+                {% for member in members|slice:":5" %}
+                <a href="{% url 'user_profile' member.user.username %}" class="member-mini-row" style="text-decoration:none;color:inherit;">
+                    {% if member.avatar %}<img class="lab-avatar" src="{{ member.avatar.url }}" alt="">{% else %}<span class="lab-avatar">{{ member.user.username|first|upper }}</span>{% endif %}
+                    <span style="min-width:0;flex:1;">
+                        <span class="row-title">{{ member.user.first_name|default:member.user.username }}</span>
+                    </span>
+                    <span class="row-sub">{{ member.get_member_type_display }}</span>
+                    <span class="row-sub">{{ member.research_topic|truncatechars:16|default:"研究方向待填写" }}</span>
+                    <span class="member-mail"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16v12H4V6Zm0 1 8 6 8-6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
+                </a>
+                {% endfor %}
+                <div style="text-align:center;padding-top:10px;"><a class="action-link" href="{% url 'member_list' %}">查看更多成员 ›</a></div>
+            </div>
+        </div>
+
+        <div class="lab-panel">
+            <div class="panel-header">
+                <span class="panel-title"><svg viewBox="0 0 24 24" fill="none"><path d="M7 3h7l5 5v13H7V3Zm7 0v6h5M10 13h6M10 17h6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>近期文档</span>
+                <a href="{% url 'document_list' %}" class="action-link">查看全部文档 →</a>
+            </div>
+            <div class="panel-body">
+                {% for doc in recent_documents %}
+                <div class="doc-row">
+                    {% if doc.is_pdf %}
+                    <img class="file-icon" src="{% static 'assets/file-icons/pdf.png' %}" alt="">
+                    {% elif doc.is_word %}
+                    <img class="file-icon" src="{% static 'assets/file-icons/word.png' %}" alt="">
+                    {% elif doc.is_excel %}
+                    <img class="file-icon" src="{% static 'assets/file-icons/excel.png' %}" alt="">
+                    {% elif doc.is_txt %}
+                    <img class="file-icon" src="{% static 'assets/file-icons/txt.png' %}" alt="">
+                    {% else %}
+                    <img class="file-icon" src="{% static 'assets/file-icons/folder.svg' %}" alt="">
+                    {% endif %}
+                    <span class="row-title" style="flex:1;">{{ doc.title|truncatechars:28 }}</span>
+                    <span class="row-sub">{{ doc.user.first_name|default:doc.user.username }}</span>
+                    <span class="row-time">{{ doc.uploaded_at|timesince }}前</span>
+                </div>
+                {% empty %}
+                <div class="empty-state"><img src="{% static 'assets/empty-states/empty-documents.png' %}" alt="">暂无文档</div>
+                {% endfor %}
+                <div class="panel-footer-action">
+                    <a class="action-link" href="{% url 'my_page' %}#documents">上传文档</a>
+                    <a class="action-link" href="{% url 'document_list' %}">新建文件夹</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="lab-footer">
+        <div class="footer-left">
+            <img src="{% static 'assets/logo/lab-icon.svg' %}" alt="" style="width:32px;height:32px;object-fit:contain;">
+            <span>华东理工大学</span>
+            <span>|</span>
+            <span>核电装备与安全研究室</span>
+        </div>
+        <div class="footer-right">
+            <a>使用帮助</a>
+            <a>反馈建议</a>
+            <a>隐私政策</a>
+            <a>联系我们</a>
+            <span style="font-size:22px;">☼</span>
+        </div>
+    </footer>
 </div>
 
 <script>
 (function(){
-    var h = new Date().getHours();
-    var e, t;
-    if(h>=5&&h<9){e='🌅';t='早上好';}
-    else if(h>=9&&h<12){e='☀️';t='上午好';}
-    else if(h>=12&&h<14){e='🌤️';t='中午好';}
-    else if(h>=14&&h<18){e='🌇';t='下午好';}
-    else if(h>=18&&h<22){e='🌙';t='晚上好';}
-    else{e='🌌';t='夜深了';}
-    document.getElementById('heroGreeting').innerHTML = '<span style="font-size:1.1rem">' + e + '</span> ' + t + '{% if user.is_authenticated %}，{{ user.first_name|default:user.username }}{% endif %}';
+    var weekdays = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+    var now = new Date();
+    var el = document.getElementById('dashboardDate');
+    if (el) el.textContent = now.getFullYear() + '年' + (now.getMonth()+1) + '月' + now.getDate() + '日 ' + weekdays[now.getDay()];
 })();
 </script>
-
-<!-- Quick Stats -->
-<div class="quick-stats anim-fade-up-1">
-    <a href="{% url 'member_list' %}" class="stat-card" style="text-decoration: none; color: inherit; cursor: pointer;">
-        <div class="stat-icon" style="background: var(--color-accent-light); color: var(--color-accent);"><span class="icon icon-team"></span></div>
-        <div class="stat-info">
-            <div class="stat-value">{{ members|length }}</div>
-            <div class="stat-label">团队成员</div>
-        </div>
-    </a>
-    <a href="{% url 'plan_list' %}" class="stat-card" style="text-decoration: none; color: inherit; cursor: pointer;">
-        <div class="stat-icon" style="background: var(--color-success-light); color: var(--color-success);"><span class="icon icon-doc"></span></div>
-        <div class="stat-info">
-            <div class="stat-value">{{ recent_plan_count }}</div>
-            <div class="stat-label">近期计划</div>
-        </div>
-    </a>
-    <a href="{% url 'document_list' %}" class="stat-card" style="text-decoration: none; color: inherit; cursor: pointer;">
-        <div class="stat-icon" style="background: var(--color-warning-light); color: var(--color-warning);"><span class="icon icon-folder"></span></div>
-        <div class="stat-info">
-            <div class="stat-value">{{ document_count|default:"0" }}</div>
-            <div class="stat-label">共享文档</div>
-        </div>
-    </a>
-    <a href="{% url 'announcement_list' %}" class="stat-card" style="text-decoration: none; color: inherit; cursor: pointer;">
-        <div class="stat-icon" style="background: rgba(236,72,153,0.1); color: #ec4899;"><span class="icon icon-bell"></span></div>
-        <div class="stat-info">
-            <div class="stat-value">{{ announcement_count|default:"0" }}</div>
-            <div class="stat-label">公告通知</div>
-        </div>
-    </a>
-</div>
-
-<!-- Announcements -->
-{% if announcements %}
-<div class="announce-card anim-fade-up-2">
-    <div class="announce-header">
-        <h2><span class="icon icon-bullhorn" style="vertical-align: middle; margin-right: 4px;"></span>最新公告</h2>
-        {% if announcement_count > 3 %}
-        <a href="{% url 'announcement_list' %}" class="link" style="font-size: 0.85rem;">查看全部 →</a>
-        {% endif %}
-    </div>
-    <div class="announce-body">
-        {% for announcement in announcements|slice:":3" %}
-        <div class="announce-item">
-            <div class="announce-dot {% if announcement.is_pinned %}pinned{% endif %}"></div>
-            <div style="flex: 1; min-width: 0;">
-                <div class="announce-title">
-                    {% if announcement.is_pinned %}<span class="icon icon-pushpin" style="vertical-align: middle; margin-right: 4px;"></span>{{ announcement.title }}{% endif %}
-                </div>
-                <div class="announce-preview">{{ announcement.content|truncatechars:100 }}</div>
-            </div>
-            <div class="announce-date">{{ announcement.created_at|date:"m-d" }}</div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
-
-<!-- Main Grid: Members + Plans -->
-<div class="grid grid-2 anim-fade-up-3">
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">
-                <span class="card-title-icon" style="background: var(--color-accent-light);"><span class="icon icon-team"></span></span>
-                团队成员
-            </h2>
-            <a href="{% url 'member_list' %}" class="link" style="font-size: 0.85rem;">全部 →</a>
-        </div>
-        {% if members %}
-            {% for member in members %}
-            <a href="{% url 'user_profile' member.user.username %}" class="member-row">
-                {% if member.avatar %}
-                <img src="{{ member.avatar.url }}" alt="{{ member.user.username }}" class="member-row-avatar">
-                {% else %}
-                <div class="member-row-placeholder">{{ member.user.username|first|upper }}</div>
-                {% endif %}
-                <div style="flex: 1; min-width: 0;">
-                    <div style="font-weight: 600; font-size: 0.93rem; color: var(--color-text-primary);">{{ member.user.first_name|default:member.user.username }}</div>
-                    <div style="font-size: 0.82rem; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ member.research_topic|truncatechars:35|default:"暂无课题" }}</div>
-                </div>
-            </a>
-            {% endfor %}
-        {% else %}
-            <div class="empty-state" style="padding: 32px 16px;">
-                <div class="empty-state-icon"><span class="icon icon-team"></span></div>
-                <p>暂无成员</p>
-            </div>
-        {% endif %}
-    </div>
-
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">
-                <span class="card-title-icon" style="background: var(--color-success-light);"><span class="icon icon-doc"></span></span>
-                团队成员计划
-            </h2>
-            <a href="{% url 'plan_list' %}" class="link" style="font-size: 0.85rem;">全部 →</a>
-        </div>
-        {% if members_with_plans %}
-            {% for member_data in members_with_plans %}
-            <div class="user-plans-group" style="margin-bottom: 16px; border-bottom: 1px solid var(--color-border-light); padding-bottom: 16px;">
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-                    {% if member_data.profile.avatar %}
-                    <img src="{{ member_data.profile.avatar.url }}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid var(--color-border-light);">
-                    {% else %}
-                    <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.85rem;">{{ member_data.profile.user.username|first|upper }}</div>
-                    {% endif %}
-                    <span style="font-weight: 600; font-size: 0.95rem; color: var(--color-text-primary);">{{ member_data.profile.user.first_name|default:member_data.profile.user.username }}</span>
-                    {% if member_data.plan_count > 0 %}
-                    <span style="font-size: 0.75rem; color: var(--color-text-tertiary); background: var(--color-bg); padding: 2px 8px; border-radius: 10px;">{{ member_data.plan_count }} 个计划</span>
-                    {% else %}
-                    <span style="font-size: 0.75rem; color: var(--color-text-tertiary); background: var(--color-bg); padding: 2px 8px; border-radius: 10px;">暂无计划</span>
-                    {% endif %}
-                </div>
-                {% if member_data.plans %}
-                <div style="display: flex; flex-direction: column; gap: 10px; margin-left: 42px;">
-                    {% for plan in member_data.plans %}
-                    <div class="plan-item-mini" style="background: var(--color-bg); border-radius: var(--radius-sm); padding: 12px 14px; border-left: 3px solid {% if plan.is_completed %}var(--color-success){% else %}var(--color-accent){% endif %}; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
-                        <div style="flex: 1; min-width: 0;">
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                                <span style="font-size: 0.78rem; color: var(--color-text-tertiary);">{{ plan.date }}</span>
-                                {% if plan.public_sub_plans_count > 0 %}
-                                <span style="font-size: 0.7rem; color: var(--color-accent); background: var(--color-accent-light); padding: 1px 6px; border-radius: 8px;">{{ plan.public_sub_plans_count }} 子计划</span>
-                                {% endif %}
-                            </div>
-                            <div style="font-size: 0.88rem; color: var(--color-text-primary); line-height: 1.5; {% if plan.is_completed %}text-decoration: line-through; color: var(--color-text-tertiary);{% endif %}">{{ plan.content|truncatechars:60 }}</div>
-                        </div>
-                        <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}" style="font-size: 0.75rem; flex-shrink: 0;">
-                            {% if plan.is_completed %}✓{% else %}○{% endif %}
-                        </span>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div style="margin-left: 42px; padding: 12px; background: var(--color-bg); border-radius: var(--radius-sm); text-align: center;">
-                    <span style="font-size: 0.85rem; color: var(--color-text-tertiary);">该成员还没有添加计划</span>
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
-        {% else %}
-            <div class="empty-state" style="padding: 32px 16px;">
-                <div class="empty-state-icon"><span class="icon icon-doc"></span></div>
-                <p>暂无成员</p>
-            </div>
-        {% endif %}
-    </div>
-</div>
 {% endblock %}

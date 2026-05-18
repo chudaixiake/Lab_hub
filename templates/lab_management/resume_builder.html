@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}简历{% endblock %}
 
@@ -6,11 +7,11 @@
 <style>
     /* Congo Theme 完全复现 */
     :root {
-        --color-primary: #64748b;
-        --color-primary-500: #64748b;
-        --color-primary-600: #475569;
-        --color-primary-700: #334155;
-        --color-primary-800: #1e293b;
+        --color-primary: #0f2a4a;
+        --color-primary-500: #2457f5;
+        --color-primary-600: #163b78;
+        --color-primary-700: #17345f;
+        --color-primary-800: #0f2a4a;
         --color-neutral: #f8fafc;
         --color-neutral-50: #f8fafc;
         --color-neutral-100: #f1f5f9;
@@ -550,24 +551,347 @@
         margin-bottom: 1rem;
         opacity: 0.5;
     }
+
+    .resume-builder {
+        max-width: none;
+        padding: 8px 8px 0;
+    }
+    .resume-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+    .resume-topbar h1 {
+        margin: 0;
+        color: #071d3f;
+        font-size: 32px;
+        line-height: 1.2;
+        font-weight: 800;
+    }
+    .resume-topbar p {
+        margin: 12px 0 0;
+        color: #66758d;
+        font-size: 16px;
+    }
+    .resume-actions {
+        display: flex;
+        gap: 22px;
+        align-items: center;
+    }
+    .resume-action-btn {
+        height: 46px;
+        min-width: 128px;
+        padding: 0 22px;
+        border: 1px solid #d4ddea;
+        border-radius: 7px;
+        background: #fff;
+        color: #17345f;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        font: inherit;
+        font-size: 15px;
+        font-weight: 800;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    .resume-action-btn.primary {
+        background: #163b78;
+        color: #fff;
+        border-color: #163b78;
+        box-shadow: 0 8px 18px rgba(15,42,74,.2);
+    }
+    .resume-action-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+    .resume-mode-row {
+        display: grid;
+        grid-template-columns: 294px 206px;
+        gap: 28px;
+        margin-bottom: 24px;
+    }
+    .resume-segment {
+        height: 46px;
+        border: 1px solid #d8e0ec;
+        border-radius: 7px;
+        background: #fff;
+        display: grid;
+        align-items: center;
+        padding: 0 12px;
+        color: #334155;
+        font-size: 14px;
+        font-weight: 700;
+    }
+    .resume-segment.three { grid-template-columns: 1fr 1fr 1fr; }
+    .resume-segment.two { grid-template-columns: 1fr 1fr; }
+    .resume-segment span,
+    .resume-segment button {
+        height: 30px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: #334155;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
+    }
+    .resume-segment .active,
+    .resume-segment button.active {
+        border: 1px solid #2457f5;
+        color: #2457f5;
+        background: #f3f7ff;
+    }
+    .builder-grid {
+        grid-template-columns: minmax(560px, 648px) minmax(560px, 1fr);
+        gap: 38px;
+        margin-top: 0;
+        align-items: start;
+    }
+    .builder-forms {
+        padding: 0;
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+    }
+    .form-section {
+        margin-bottom: 20px;
+        padding: 0;
+        background: #fff;
+        border: 1px solid #dfe5ee;
+        border-radius: 8px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, .035);
+        overflow: hidden;
+    }
+    .form-section:first-child {
+        padding-bottom: 24px;
+    }
+    .form-section .section-header {
+        min-height: 58px;
+        margin: 0;
+        padding: 0 24px;
+        border-bottom: 1px solid #e4e9f1;
+    }
+    .form-section:not(:first-child) .section-header {
+        border-bottom: 0;
+    }
+    .form-section.is-open:not(:first-child) .section-header {
+        border-bottom: 1px solid #e4e9f1;
+    }
+    .section-title {
+        color: #071d3f;
+        font-size: 18px;
+        font-weight: 800;
+    }
+    .section-title::before {
+        content: "";
+        width: 20px;
+        height: 20px;
+        border: 2px solid #2457f5;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .form-section:nth-of-type(2) .section-header > div[style*="display:flex"] {
+        display: none !important;
+    }
+    .form-section:not(:first-child) > :not(.section-header) {
+        display: none;
+    }
+    .form-section.is-open > :not(.section-header) {
+        display: block;
+    }
+    .form-section:not(:first-child) .btn-add {
+        width: 26px;
+        height: 26px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: #17345f;
+        font-size: 0;
+    }
+    .form-section:not(:first-child) .btn-add::after {
+        content: "⌄";
+        font-size: 20px;
+        line-height: 1;
+    }
+    .form-section.is-open:not(:first-child) .btn-add {
+        width: auto;
+        height: 32px;
+        padding: 0 12px;
+        border: 1px solid #d4ddea;
+        border-radius: 7px;
+        background: #fff;
+        color: #17345f;
+        font-size: 13px;
+    }
+    .form-section.is-open:not(:first-child) .btn-add::after {
+        content: none;
+    }
+    .form-section:first-child {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px 22px;
+        padding-left: 26px;
+        padding-right: 26px;
+    }
+    .form-section:first-child .section-header,
+    .form-section:first-child .resume-photo-uploader,
+    .form-section:first-child .form-group:last-child {
+        grid-column: 1 / -1;
+    }
+    .resume-photo-uploader {
+        display: block;
+    }
+    .form-group {
+        margin: 0;
+    }
+    .form-group label {
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 800;
+    }
+    .form-control {
+        height: 40px;
+        border-color: #dce4ef;
+        border-radius: 7px;
+        background: #fff;
+        color: #24344d;
+        font-size: 13px;
+    }
+    textarea.form-control {
+        min-height: 50px;
+        height: 50px;
+    }
+    .builder-preview {
+        position: sticky;
+        top: 82px;
+        max-height: none;
+        overflow: visible;
+        padding: 0;
+        background: transparent;
+        border-radius: 0;
+    }
+    .preview-label,
+    #formatToolbar {
+        display: none !important;
+    }
+    .resume-paper {
+        width: min(100%, 668px);
+        margin: 0 auto;
+        border-radius: 0;
+        box-shadow: 0 7px 24px rgba(15,23,42,.18);
+    }
+    .resume-paper-inner {
+        padding: 22mm 20mm;
+    }
+    .resume-preview {
+        font-family: "Microsoft YaHei", "SimSun", serif;
+        color: #17345f;
+    }
+    .resume-header {
+        text-align: left;
+        padding-bottom: 13px;
+        border-bottom: 0;
+        margin-bottom: 12px;
+    }
+    .resume-name {
+        color: #071d3f;
+        font-size: 28px;
+        font-weight: 800;
+    }
+    .resume-headline {
+        color: #2457a9;
+        font-size: 14px;
+        font-weight: 800;
+    }
+    .resume-contact {
+        color: #334155;
+        font-size: 9px;
+    }
+    .resume-section-title {
+        color: #2457f5;
+        border-bottom: 1.5px solid #17345f;
+        padding-bottom: 8px;
+        font-size: 14px;
+    }
+    .resume-section-title::before {
+        content: "";
+        display: inline-block;
+        width: 2px;
+        height: 14px;
+        margin-right: 10px;
+        background: #2457f5;
+        vertical-align: -2px;
+    }
+    .resume-entry-title {
+        color: #17345f;
+        font-size: 10px;
+    }
+    .resume-entry-description,
+    .resume-summary-text {
+        color: #334155;
+    }
+    .btn-generate {
+        display: none;
+    }
+    @media (max-width: 1180px) {
+        .builder-grid { grid-template-columns: 1fr; }
+        .builder-preview { position: static; }
+        .resume-mode-row { grid-template-columns: 1fr; max-width: 648px; }
+    }
+    @media (max-width: 760px) {
+        .resume-topbar { flex-direction: column; }
+        .resume-actions { width: 100%; }
+        .resume-action-btn { flex: 1; }
+        .form-section:first-child { grid-template-columns: 1fr; }
+    }
 </style>
 
-<button class="theme-switcher" onclick="toggleTheme()">🌓 切换主题</button>
-
 <div class="resume-builder anim-fade-up">
-    <div class="page-header" style="margin-bottom: 2rem;">
-        <h1 class="page-title">简历生成器</h1>
-        <p class="page-subtitle">在线创建专业简历</p>
+    <div class="resume-topbar">
+        <div>
+            <h1>简历生成器</h1>
+            <p>用于快速生成标准学术简历与求职简历</p>
+        </div>
+        <div class="resume-actions">
+            <button type="button" class="resume-action-btn" onclick="saveResumeDraft(event)">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12v18l-6-4-6 4V3Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                保存草稿
+            </button>
+            <button type="button" onclick="downloadPDF()" class="resume-action-btn primary">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M7 3h7l5 5v13H7V3Zm7 0v6h5M10 14h4M10 17h4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                导出 PDF
+            </button>
+        </div>
     </div>
     
     <form method="POST" id="resumeForm" action="">
         {% csrf_token %}
         <input type="hidden" name="action" value="generate_pdf">
+        <input type="hidden" name="resume_type" id="resume_type" value="{{ resume_initial.resume_type|default:'academic' }}">
+        <input type="hidden" name="language" id="resume_language" value="{{ resume_initial.language|default:'zh' }}">
         <input type="hidden" name="education_count" id="education_count" value="0">
         <input type="hidden" name="work_count" id="work_count" value="0">
         <input type="hidden" name="skill_count" id="skill_count" value="0">
         <input type="hidden" name="project_count" id="project_count" value="0">
         <input type="hidden" name="photo_data" id="photo_data" value="">
+        <div class="resume-mode-row">
+            <div class="resume-segment three">
+                <span>简历类型</span>
+                <button type="button" data-resume-type="academic" class="{% if resume_initial.resume_type != 'job' %}active{% endif %}" onclick="setResumeType('academic')">+ 学术简历</button>
+                <button type="button" data-resume-type="job" class="{% if resume_initial.resume_type == 'job' %}active{% endif %}" onclick="setResumeType('job')">求职简历</button>
+            </div>
+            <div class="resume-segment two">
+                <button type="button" data-resume-language="zh" class="{% if resume_initial.language != 'en' %}active{% endif %}" onclick="setResumeLanguage('zh')">中文简历</button>
+                <button type="button" data-resume-language="en" class="{% if resume_initial.language == 'en' %}active{% endif %}" onclick="setResumeLanguage('en')">英文简历</button>
+            </div>
+        </div>
         
         <div class="builder-grid">
             <!-- 表单区域 -->
@@ -579,7 +903,7 @@
                             <span></span> 基本信息
                         </div>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group resume-photo-uploader">
                             <label>证件照片</label>
                             <div style="display: flex; gap: 1rem; align-items: flex-start;">
                                 <div id="photoPreview" style="width: 120px; height: 150px; border: 2px dashed var(--color-neutral-300); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; overflow: hidden; background: var(--color-neutral-50);">
@@ -600,70 +924,88 @@
                         </div>
                         <div class="form-group">
                             <label>姓名 *</label>
-                            <input type="text" name="name" class="form-control" placeholder="输入您的姓名" required oninput="updatePreview()">
+                            <input type="text" name="name" class="form-control" value="{{ resume_initial.basics.name }}" placeholder="输入您的姓名" required oninput="updatePreview()">
                         </div>
                     <div class="form-group">
-                        <label>职位/头衔</label>
-                        <input type="text" name="headline" class="form-control" placeholder="例如：软件工程师 | 全栈开发者" oninput="updatePreview()">
+                        <label>性别</label>
+                        <input type="text" name="gender" class="form-control" value="{{ resume_initial.basics.gender }}" oninput="updatePreview()">
+                    </div>
+                    <div class="form-group">
+                        <label>出生日期</label>
+                        <input type="text" name="birth_date" class="form-control" value="{{ resume_initial.basics.birth_date }}" placeholder="YYYY-MM-DD" oninput="updatePreview()">
+                    </div>
+                    <div class="form-group">
+                        <label>最高学位</label>
+                        <input type="text" name="headline" class="form-control" value="{{ resume_initial.basics.headline }}" placeholder="例如：博士研究生 / 软件工程师" oninput="updatePreview()">
+                    </div>
+                    <div class="form-group">
+                        <label>所在单位</label>
+                        <input type="text" name="unit" class="form-control" value="{{ resume_initial.basics.unit }}" oninput="updatePreview()">
                     </div>
                     <div class="form-group">
                         <label>邮箱</label>
-                        <input type="email" name="email" class="form-control" placeholder="email@example.com" oninput="updatePreview()">
+                        <input type="email" name="email" class="form-control" value="{{ resume_initial.basics.email }}" placeholder="email@example.com" oninput="updatePreview()">
                     </div>
                     <div class="form-group">
                         <label>电话</label>
-                        <input type="text" name="phone" class="form-control" placeholder="(123) 456-7890" oninput="updatePreview()">
+                        <input type="text" name="phone" class="form-control" value="{{ resume_initial.basics.phone }}" placeholder="(123) 456-7890" oninput="updatePreview()">
                     </div>
                     <div class="form-group">
-                        <label>所在地</label>
-                        <input type="text" name="location" class="form-control" placeholder="城市，省份" oninput="updatePreview()">
+                        <label>地址</label>
+                        <input type="text" name="location" class="form-control" value="{{ resume_initial.basics.location }}" placeholder="城市，省份" oninput="updatePreview()">
                     </div>
                     <div class="form-group">
                         <label>个人简介</label>
-                        <textarea name="summary" class="form-control" rows="4" placeholder="简要描述您的专业背景和技能..." oninput="updatePreview()"></textarea>
+                        <textarea name="summary" class="form-control" rows="4" placeholder="简要描述您的专业背景和技能..." oninput="updatePreview()">{{ resume_initial.basics.summary }}</textarea>
                     </div>
                 </div>
                 
                 <!-- 教育经历 -->
-                <div class="form-section">
-                    <div class="section-header">
+                <div class="form-section resume-dynamic-section" id="education-section">
+                    <div class="section-header" onclick="toggleResumeSection('education-section')">
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                            <span class="filter-chip active">学术简历</span>
+                            <span class="filter-chip">求职简历</span>
+                            <span class="filter-chip active">中文简历</span>
+                            <span class="filter-chip">英文简历</span>
+                        </div>
                         <div class="section-title">
                             <span></span> 教育经历
                         </div>
-                        <button type="button" class="btn-add" onclick="addEducation()">+ 添加</button>
+                        <button type="button" class="btn-add" onclick="event.stopPropagation(); addEducation(); openResumeSection('education-section');">+ 添加</button>
                     </div>
                     <div id="education-entries"></div>
                 </div>
                 
                 <!-- 工作经历 -->
-                <div class="form-section">
-                    <div class="section-header">
+                <div class="form-section resume-dynamic-section" id="work-section">
+                    <div class="section-header" onclick="toggleResumeSection('work-section')">
                         <div class="section-title">
                             <span></span> 工作经历
                         </div>
-                        <button type="button" class="btn-add" onclick="addWork()">+ 添加</button>
+                        <button type="button" class="btn-add" onclick="event.stopPropagation(); addWork(); openResumeSection('work-section');">+ 添加</button>
                     </div>
                     <div id="work-entries"></div>
                 </div>
                 
                 <!-- 技能 -->
-                <div class="form-section">
-                    <div class="section-header">
+                <div class="form-section resume-dynamic-section" id="skill-section">
+                    <div class="section-header" onclick="toggleResumeSection('skill-section')">
                         <div class="section-title">
                             <span></span> 技能
                         </div>
-                        <button type="button" class="btn-add" onclick="addSkill()">+ 添加</button>
+                        <button type="button" class="btn-add" onclick="event.stopPropagation(); addSkill(); openResumeSection('skill-section');">+ 添加</button>
                     </div>
                     <div id="skill-entries"></div>
                 </div>
                 
                 <!-- 项目经历 -->
-                <div class="form-section">
-                    <div class="section-header">
+                <div class="form-section resume-dynamic-section" id="project-section">
+                    <div class="section-header" onclick="toggleResumeSection('project-section')">
                         <div class="section-title">
                             <span></span> 项目经历
                         </div>
-                        <button type="button" class="btn-add" onclick="addProject()">+ 添加</button>
+                        <button type="button" class="btn-add" onclick="event.stopPropagation(); addProject(); openResumeSection('project-section');">+ 添加</button>
                     </div>
                     <div id="project-entries"></div>
                 </div>
@@ -717,14 +1059,47 @@
                 <div class="resume-paper">
                     <div class="resume-paper-inner" id="resumePaperInner">
                         <div class="resume-preview" id="resumePreview" contenteditable="false">
-                            <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #94a3b8; font-size: 14px; text-align: center;">
-                                <div>
-                                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.4;">
-                                        <span class="icon icon-resume" style="width: 32px; height: 32px;"></span>
-                                    </div>
-                                    <p>在左侧填写信息，右侧将实时显示预览</p>
-                                    <p style="font-size: 12px; margin-top: 8px;">点击右上角"进入编辑模式"可直接在预览上编辑</p>
+                            <div class="resume-header" style="position: relative; display: flex; justify-content: space-between; align-items: flex-start;">
+                                <div style="flex: 1;">
+                                    <div class="resume-name">陈韩宇</div>
+                                    <div class="resume-headline">博士研究生</div>
+                                    <div class="resume-contact">☎ (123) 456-7890 &nbsp;&nbsp; ✉ chenhan yu@example.com &nbsp;&nbsp; ● 北京市 海淀区 &nbsp;&nbsp; ▣ 1996-05-18</div>
                                 </div>
+                                <img src="{% static 'assets/resume/id-photo-placeholder.png' %}" style="width: 80px; height: 100px; object-fit: cover; border: 2px solid #e2e8f0; border-radius: 2px; margin-left: 15px;">
+                            </div>
+                            <div class="resume-section">
+                                <div class="resume-section-title">教育经历</div>
+                                <div class="resume-entry">
+                                    <div class="resume-entry-header"><div class="resume-entry-title">XX大学　计算机科学与技术（博士研究生）</div><div class="resume-entry-date">2022.09 – 至今</div></div>
+                                    <div class="resume-entry-description">研究方向：机器学习、深度学习、生物信息学<br>GPA: 3.85/4.0　　　排名：3/18</div>
+                                </div>
+                                <div class="resume-entry">
+                                    <div class="resume-entry-header"><div class="resume-entry-title">XX大学　计算机科学与技术（硕士）</div><div class="resume-entry-date">2019.09 – 2022.06</div></div>
+                                    <div class="resume-entry-description">研究方向：图神经网络、表示学习<br>GPA: 3.80/4.0　　　排名：2/25</div>
+                                </div>
+                                <div class="resume-entry">
+                                    <div class="resume-entry-header"><div class="resume-entry-title">XX大学　软件工程（学士）</div><div class="resume-entry-date">2015.09 – 2019.06</div></div>
+                                    <div class="resume-entry-description">GPA: 3.75/4.0　　　排名：8/120</div>
+                                </div>
+                            </div>
+                            <div class="resume-section">
+                                <div class="resume-section-title">项目经历</div>
+                                <div class="resume-entry">
+                                    <div class="resume-entry-header"><div class="resume-entry-title">基于图神经网络的药物靶点预测平台</div><div class="resume-entry-date">2023.03 – 2024.12</div></div>
+                                    <div class="resume-entry-description">• 提出基于多关系图谱的药物-靶点相互作用预测模型，提升预测准确率 6.2%。<br>• 负责整体架构设计与模型实现，带领团队完成系统开发与部署。</div>
+                                </div>
+                                <div class="resume-entry">
+                                    <div class="resume-entry-header"><div class="resume-entry-title">单细胞转录组分析工具开发</div><div class="resume-entry-date">2022.01 – 2022.12</div></div>
+                                    <div class="resume-entry-description">• 开发高效的单细胞数据聚类与可视化工具，支持大规模数据处理。<br>• 发表相关研究论文 1 篇，工具已开源并获得广泛使用。</div>
+                                </div>
+                            </div>
+                            <div class="resume-section">
+                                <div class="resume-section-title">科研成果</div>
+                                <div class="resume-entry-description">• Graph-based Drug Target Interaction Prediction with Heterogeneous Graph Neural Networks　第一作者<br>• A Survey on Graph Neural Networks in Bioinformatics　通讯作者</div>
+                            </div>
+                            <div class="resume-section">
+                                <div class="resume-section-title">技能证书</div>
+                                <div class="resume-entry-description">• 编程语言：Python、C++、R、SQL<br>• 工具框架：PyTorch、TensorFlow、Scikit-learn、DGL<br>• 证书：英语六级（612）、计算机技术与软件专业技术资格（中级）</div>
                             </div>
                         </div>
                     </div>
@@ -1012,6 +1387,97 @@
         // 保留换行符
         return div.innerHTML.replace(/\n/g, '<br>');
     }
+
+    const resumeEnglishDictionary = {
+        '您的姓名': 'Your Name',
+        '陈韩宇': 'Chen Hanyu',
+        '任千一': 'Ren Qianyi',
+        '苏洁': 'Su Jie',
+        '张博杭': 'Zhang Bohang',
+        '邵荣恒': 'Shao Rongheng',
+        '博士研究生': 'Ph.D. Candidate',
+        '硕士研究生': 'Master Student',
+        '本科生': 'Undergraduate Student',
+        '已毕业': 'Alumni',
+        '负责人': 'Principal Investigator',
+        '男': 'Male',
+        '女': 'Female',
+        'XX大学 实验室': 'XX University Laboratory',
+        'XX大学': 'XX University',
+        '实验室': 'Laboratory',
+        '北京市 海淀区': 'Haidian District, Beijing',
+        '城市，省份': 'City, Province',
+        '至今': 'Present',
+        '高中': 'High School',
+        '专科': 'Associate Degree',
+        '本科': "Bachelor's Degree",
+        '硕士': "Master's Degree",
+        '博士': 'Ph.D.',
+        '计算机科学与技术': 'Computer Science and Technology',
+        '软件工程': 'Software Engineering',
+        '机器学习': 'Machine Learning',
+        '深度学习': 'Deep Learning',
+        '生物信息学': 'Bioinformatics',
+        '图神经网络': 'Graph Neural Networks',
+        '表示学习': 'Representation Learning',
+        '个人简介': 'Profile',
+        '教育经历': 'Education',
+        '工作经历': 'Experience',
+        '项目经历': 'Projects',
+        '科研成果': 'Research Output',
+        '技能证书': 'Skills and Certificates',
+        '技能': 'Skills',
+        '证书': 'Certificates',
+        '编程语言': 'Programming Languages',
+        '工具框架': 'Tools and Frameworks',
+        '工具': 'Tools',
+        '框架': 'Frameworks',
+        '主修课程': 'Major courses',
+        '成就': 'Achievements',
+        '工作职责': 'Responsibilities',
+        '项目概述': 'Project overview',
+        '技术栈': 'Technology stack',
+        '您的贡献': 'Contributions',
+        '负责': 'Responsible for',
+        '参与': 'Participated in',
+        '开发': 'Developed',
+        '研究': 'Research',
+        '系统': 'System',
+        '平台': 'Platform',
+        '算法': 'Algorithm',
+        '数据分析': 'Data Analysis',
+        '可视化': 'Visualization',
+        '论文': 'Paper',
+        '专利': 'Patent',
+        '第一作者': 'First Author',
+        '通讯作者': 'Corresponding Author',
+        '这个人很懒什么也没有留下。': 'No profile summary has been provided.'
+    };
+
+    function translateResumeText(text, isEnglish) {
+        if (!text || !isEnglish) return text || '';
+        let translated = String(text);
+        Object.keys(resumeEnglishDictionary)
+            .sort((a, b) => b.length - a.length)
+            .forEach(key => {
+                translated = translated.split(key).join(resumeEnglishDictionary[key]);
+            });
+        return translated
+            .replace(/，/g, ', ')
+            .replace(/。/g, '. ')
+            .replace(/；/g, '; ')
+            .replace(/：/g, ': ')
+            .replace(/、/g, ', ')
+            .replace(/（/g, '(')
+            .replace(/）/g, ')')
+            .replace(/\s+\./g, '.')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+    }
+
+    function resumeText(text) {
+        return translateResumeText(text, document.getElementById('resume_language').value === 'en');
+    }
     
     // 滚动到对应字段并高亮
     function scrollToField(fieldName) {
@@ -1042,18 +1508,38 @@
     }
     
     function updatePreview() {
-        const name = document.querySelector('input[name="name"]').value || '您的姓名';
-        const headline = document.querySelector('input[name="headline"]').value || '';
+        const isEnglish = document.getElementById('resume_language').value === 'en';
+        const name = translateResumeText(document.querySelector('input[name="name"]').value || '您的姓名', isEnglish);
+        const headline = translateResumeText(document.querySelector('input[name="headline"]').value || '', isEnglish);
+        const gender = translateResumeText(document.querySelector('input[name="gender"]').value || '', isEnglish);
+        const birthDate = document.querySelector('input[name="birth_date"]').value || '';
+        const unit = translateResumeText(document.querySelector('input[name="unit"]').value || '', isEnglish);
         const email = document.querySelector('input[name="email"]').value || '';
         const phone = document.querySelector('input[name="phone"]').value || '';
-        const location = document.querySelector('input[name="location"]').value || '';
-        const summary = document.querySelector('textarea[name="summary"]').value || '';
+        const location = translateResumeText(document.querySelector('input[name="location"]').value || '', isEnglish);
+        const summary = translateResumeText(document.querySelector('textarea[name="summary"]').value || '', isEnglish);
+        const labels = isEnglish ? {
+            summary: 'Profile',
+            education: 'Education',
+            work: 'Experience',
+            skills: 'Skills',
+            projects: 'Projects'
+        } : {
+            summary: '个人简介',
+            education: '教育经历',
+            work: '工作经历',
+            skills: '技能证书',
+            projects: '项目经历'
+        };
         
         // 构建联系信息 - 与 PDF 一致，使用 | 分隔
         let contactParts = [];
+        if (gender) contactParts.push(escapeHtml(gender));
+        if (unit) contactParts.push(escapeHtml(unit));
         if (email) contactParts.push(escapeHtml(email));
         if (phone) contactParts.push(escapeHtml(phone));
         if (location) contactParts.push(escapeHtml(location));
+        if (birthDate) contactParts.push(escapeHtml(birthDate));
         const contactInfo = contactParts.join(' | ');
         
         // 教育经历预览
@@ -1061,17 +1547,17 @@
         for (let i = 0; i < educationCount; i++) {
             const el = document.querySelector(`input[name="education_${i}_institution"]`);
             if (!el) continue;
-            const institution = el.value || '';
-            const degree = document.querySelector(`select[name="education_${i}_degree"]`)?.value || '';
-            const area = document.querySelector(`input[name="education_${i}_area"]`)?.value || '';
+            const institution = translateResumeText(el.value || '', isEnglish);
+            const degree = translateResumeText(document.querySelector(`select[name="education_${i}_degree"]`)?.value || '', isEnglish);
+            const area = translateResumeText(document.querySelector(`input[name="education_${i}_area"]`)?.value || '', isEnglish);
             const startDate = document.querySelector(`input[name="education_${i}_start_date"]`)?.value || '';
-            const endDate = document.querySelector(`input[name="education_${i}_end_date"]`)?.value || '至今';
-            const description = document.querySelector(`textarea[name="education_${i}_description"]`)?.value || '';
+            const endDate = document.querySelector(`input[name="education_${i}_end_date"]`)?.value || (isEnglish ? 'Present' : '至今');
+            const description = translateResumeText(document.querySelector(`textarea[name="education_${i}_description"]`)?.value || '', isEnglish);
             
             if (institution) {
                 let dateStr = '';
                 if (startDate && endDate) dateStr = `${startDate} - ${endDate}`;
-                else if (startDate) dateStr = `${startDate} - 至今`;
+                else if (startDate) dateStr = `${startDate} - ${isEnglish ? 'Present' : '至今'}`;
                 
                 educationHTML += `
                     <div class="resume-entry" onclick="scrollToField('education_${i}_institution')">
@@ -1091,16 +1577,16 @@
         for (let i = 0; i < workCount; i++) {
             const el = document.querySelector(`input[name="work_${i}_company"]`);
             if (!el) continue;
-            const company = el.value || '';
-            const position = document.querySelector(`input[name="work_${i}_position"]`)?.value || '';
+            const company = translateResumeText(el.value || '', isEnglish);
+            const position = translateResumeText(document.querySelector(`input[name="work_${i}_position"]`)?.value || '', isEnglish);
             const startDate = document.querySelector(`input[name="work_${i}_start_date"]`)?.value || '';
-            const endDate = document.querySelector(`input[name="work_${i}_end_date"]`)?.value || '至今';
-            const description = document.querySelector(`textarea[name="work_${i}_description"]`)?.value || '';
+            const endDate = document.querySelector(`input[name="work_${i}_end_date"]`)?.value || (isEnglish ? 'Present' : '至今');
+            const description = translateResumeText(document.querySelector(`textarea[name="work_${i}_description"]`)?.value || '', isEnglish);
             
             if (company) {
                 let dateStr = '';
                 if (startDate && endDate) dateStr = `${startDate} - ${endDate}`;
-                else if (startDate) dateStr = `${startDate} - 至今`;
+                else if (startDate) dateStr = `${startDate} - ${isEnglish ? 'Present' : '至今'}`;
                 
                 workHTML += `
                     <div class="resume-entry" onclick="scrollToField('work_${i}_company')">
@@ -1120,8 +1606,8 @@
         for (let i = 0; i < skillCount; i++) {
             const el = document.querySelector(`input[name="skill_${i}_category"]`);
             if (!el) continue;
-            const category = el.value || '';
-            const skills = document.querySelector(`input[name="skill_${i}_skills"]`)?.value || '';
+            const category = translateResumeText(el.value || '', isEnglish);
+            const skills = translateResumeText(document.querySelector(`input[name="skill_${i}_skills"]`)?.value || '', isEnglish);
             
             if (category) {
                 skillsHTML += `
@@ -1137,8 +1623,8 @@
         for (let i = 0; i < projectCount; i++) {
             const el = document.querySelector(`input[name="project_${i}_name"]`);
             if (!el) continue;
-            const projectName = el.value || '';
-            const description = document.querySelector(`textarea[name="project_${i}_description"]`)?.value || '';
+            const projectName = translateResumeText(el.value || '', isEnglish);
+            const description = translateResumeText(document.querySelector(`textarea[name="project_${i}_description"]`)?.value || '', isEnglish);
             const link = document.querySelector(`input[name="project_${i}_link"]`)?.value || '';
             
             if (projectName) {
@@ -1162,14 +1648,14 @@
                     ${headline ? `<div class="resume-headline" onclick="scrollToField('headline')">${escapeHtml(headline)}</div>` : ''}
                     ${contactInfo ? `<div class="resume-contact" onclick="scrollToField('email')">${escapeHtml(contactInfo)}</div>` : ''}
                 </div>
-                ${photoData ? `<img src="${photoData}" style="width: 80px; height: 100px; object-fit: cover; border: 2px solid #e2e8f0; border-radius: 4px; margin-left: 15px;">` : ''}
+                <img src="${photoData || '{% static 'assets/resume/id-photo-placeholder.png' %}'}" style="width: 80px; height: 100px; object-fit: cover; border: 2px solid #e2e8f0; border-radius: 4px; margin-left: 15px;">
             </div>
         `;
         
         if (summary) {
             previewHTML += `
                 <div class="resume-section">
-                    <div class="resume-section-title">个人简介</div>
+                    <div class="resume-section-title">${labels.summary}</div>
                     <div class="resume-summary-text">${escapeHtml(summary)}</div>
                 </div>
             `;
@@ -1178,7 +1664,7 @@
         if (educationHTML) {
             previewHTML += `
                 <div class="resume-section">
-                    <div class="resume-section-title">教育经历</div>
+                    <div class="resume-section-title">${labels.education}</div>
                     ${educationHTML}
                 </div>
             `;
@@ -1187,7 +1673,7 @@
         if (workHTML) {
             previewHTML += `
                 <div class="resume-section">
-                    <div class="resume-section-title">工作经历</div>
+                    <div class="resume-section-title">${labels.work}</div>
                     ${workHTML}
                 </div>
             `;
@@ -1196,7 +1682,7 @@
         if (skillsHTML) {
             previewHTML += `
                 <div class="resume-section">
-                    <div class="resume-section-title">技能</div>
+                    <div class="resume-section-title">${labels.skills}</div>
                     ${skillsHTML}
                 </div>
             `;
@@ -1205,7 +1691,7 @@
         if (projectsHTML) {
             previewHTML += `
                 <div class="resume-section">
-                    <div class="resume-section-title">项目经历</div>
+                    <div class="resume-section-title">${labels.projects}</div>
                     ${projectsHTML}
                 </div>
             `;
@@ -1217,7 +1703,7 @@
                     <div style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.4;">
                         <span class="icon icon-resume" style="width: 32px; height: 32px;"></span>
                     </div>
-                    <p>开始填写信息以查看预览</p>
+                    <p>${isEnglish ? 'Start entering information to preview your resume.' : '开始填写信息以查看预览'}</p>
                 </div>
             </div>
         `;
@@ -1227,43 +1713,44 @@
     }
     
     function addEducation() {
+        const isEnglish = document.getElementById('resume_language').value === 'en';
         const container = document.getElementById('education-entries');
         const entry = document.createElement('div');
         entry.className = 'entry-card';
         entry.innerHTML = `
             <div class="entry-header">
-                <div class="entry-title">教育经历 #${educationCount + 1}</div>
-                <button type="button" class="btn-remove" onclick="this.parentElement.parentElement.remove(); updatePreview();">移除</button>
+                <div class="entry-title">${isEnglish ? 'Education' : '教育经历'} #${educationCount + 1}</div>
+                <button type="button" class="btn-remove" onclick="this.parentElement.parentElement.remove(); updatePreview();">${isEnglish ? 'Remove' : '移除'}</button>
             </div>
             <div class="form-group">
-                <label>学校/机构</label>
-                <input type="text" name="education_${educationCount}_institution" class="form-control" placeholder="学校名称" oninput="updatePreview()">
+                <label>${isEnglish ? 'Institution' : '学校/机构'}</label>
+                <input type="text" name="education_${educationCount}_institution" class="form-control" placeholder="${isEnglish ? 'University or institution' : '学校名称'}" oninput="updatePreview()">
             </div>
             <div class="form-group">
-                <label>学位</label>
+                <label>${isEnglish ? 'Degree' : '学位'}</label>
                 <select name="education_${educationCount}_degree" class="form-control" onchange="updatePreview()">
-                    <option value="高中">高中</option>
-                    <option value="专科">专科</option>
-                    <option value="本科" selected>本科</option>
-                    <option value="硕士">硕士</option>
-                    <option value="博士">博士</option>
+                    <option value="高中">${isEnglish ? 'High School' : '高中'}</option>
+                    <option value="专科">${isEnglish ? 'Associate Degree' : '专科'}</option>
+                    <option value="本科" selected>${isEnglish ? "Bachelor's Degree" : '本科'}</option>
+                    <option value="硕士">${isEnglish ? "Master's Degree" : '硕士'}</option>
+                    <option value="博士">${isEnglish ? 'Ph.D.' : '博士'}</option>
                 </select>
             </div>
             <div class="form-group">
-                <label>专业</label>
-                <input type="text" name="education_${educationCount}_area" class="form-control" placeholder="专业名称" oninput="updatePreview()">
+                <label>${isEnglish ? 'Major' : '专业'}</label>
+                <input type="text" name="education_${educationCount}_area" class="form-control" placeholder="${isEnglish ? 'Major or research area' : '专业名称'}" oninput="updatePreview()">
             </div>
             <div class="form-group">
-                <label>开始日期</label>
+                <label>${isEnglish ? 'Start Date' : '开始日期'}</label>
                 <input type="text" name="education_${educationCount}_start_date" class="form-control" placeholder="YYYY-MM" oninput="updatePreview()">
             </div>
             <div class="form-group">
-                <label>结束日期</label>
-                <input type="text" name="education_${educationCount}_end_date" class="form-control" placeholder="YYYY-MM 或留空表示至今" oninput="updatePreview()">
+                <label>${isEnglish ? 'End Date' : '结束日期'}</label>
+                <input type="text" name="education_${educationCount}_end_date" class="form-control" placeholder="${isEnglish ? 'YYYY-MM or leave blank for Present' : 'YYYY-MM 或留空表示至今'}" oninput="updatePreview()">
             </div>
             <div class="form-group">
-                <label>描述</label>
-                <textarea name="education_${educationCount}_description" class="form-control" rows="3" placeholder="主修课程、成就等..." oninput="updatePreview()"></textarea>
+                <label>${isEnglish ? 'Description' : '描述'}</label>
+                <textarea name="education_${educationCount}_description" class="form-control" rows="3" placeholder="${isEnglish ? 'Courses, achievements, research direction...' : '主修课程、成就等...'}" oninput="updatePreview()"></textarea>
             </div>
         `;
         container.appendChild(entry);
@@ -1273,33 +1760,34 @@
     }
     
     function addWork() {
+        const isEnglish = document.getElementById('resume_language').value === 'en';
         const container = document.getElementById('work-entries');
         const entry = document.createElement('div');
         entry.className = 'entry-card';
         entry.innerHTML = `
             <div class="entry-header">
-                <div class="entry-title">工作经历 #${workCount + 1}</div>
-                <button type="button" class="btn-remove" onclick="this.parentElement.parentElement.remove(); updatePreview();">移除</button>
+                <div class="entry-title">${isEnglish ? 'Experience' : '工作经历'} #${workCount + 1}</div>
+                <button type="button" class="btn-remove" onclick="this.parentElement.parentElement.remove(); updatePreview();">${isEnglish ? 'Remove' : '移除'}</button>
             </div>
             <div class="form-group">
-                <label>公司名称</label>
-                <input type="text" name="work_${workCount}_company" class="form-control" placeholder="公司名称" oninput="updatePreview()">
+                <label>${isEnglish ? 'Organization' : '公司名称'}</label>
+                <input type="text" name="work_${workCount}_company" class="form-control" placeholder="${isEnglish ? 'Organization name' : '公司名称'}" oninput="updatePreview()">
             </div>
             <div class="form-group">
-                <label>职位</label>
-                <input type="text" name="work_${workCount}_position" class="form-control" placeholder="职位名称" oninput="updatePreview()">
+                <label>${isEnglish ? 'Position' : '职位'}</label>
+                <input type="text" name="work_${workCount}_position" class="form-control" placeholder="${isEnglish ? 'Position title' : '职位名称'}" oninput="updatePreview()">
             </div>
             <div class="form-group">
-                <label>开始日期</label>
+                <label>${isEnglish ? 'Start Date' : '开始日期'}</label>
                 <input type="text" name="work_${workCount}_start_date" class="form-control" placeholder="YYYY-MM" oninput="updatePreview()">
             </div>
             <div class="form-group">
-                <label>结束日期</label>
-                <input type="text" name="work_${workCount}_end_date" class="form-control" placeholder="YYYY-MM 或留空表示至今" oninput="updatePreview()">
+                <label>${isEnglish ? 'End Date' : '结束日期'}</label>
+                <input type="text" name="work_${workCount}_end_date" class="form-control" placeholder="${isEnglish ? 'YYYY-MM or leave blank for Present' : 'YYYY-MM 或留空表示至今'}" oninput="updatePreview()">
             </div>
             <div class="form-group">
-                <label>工作描述</label>
-                <textarea name="work_${workCount}_description" class="form-control" rows="4" placeholder="工作职责和成就..." oninput="updatePreview()"></textarea>
+                <label>${isEnglish ? 'Description' : '工作描述'}</label>
+                <textarea name="work_${workCount}_description" class="form-control" rows="4" placeholder="${isEnglish ? 'Responsibilities and achievements...' : '工作职责和成就...'}" oninput="updatePreview()"></textarea>
             </div>
         `;
         container.appendChild(entry);
@@ -1309,21 +1797,22 @@
     }
     
     function addSkill() {
+        const isEnglish = document.getElementById('resume_language').value === 'en';
         const container = document.getElementById('skill-entries');
         const entry = document.createElement('div');
         entry.className = 'entry-card';
         entry.innerHTML = `
             <div class="entry-header">
-                <div class="entry-title">技能 #${skillCount + 1}</div>
-                <button type="button" class="btn-remove" onclick="this.parentElement.parentElement.remove(); updatePreview();">移除</button>
+                <div class="entry-title">${isEnglish ? 'Skill' : '技能'} #${skillCount + 1}</div>
+                <button type="button" class="btn-remove" onclick="this.parentElement.parentElement.remove(); updatePreview();">${isEnglish ? 'Remove' : '移除'}</button>
             </div>
             <div class="form-group">
-                <label>技能类别</label>
-                <input type="text" name="skill_${skillCount}_category" class="form-control" placeholder="例如：编程语言、框架、工具等" oninput="updatePreview()">
+                <label>${isEnglish ? 'Category' : '技能类别'}</label>
+                <input type="text" name="skill_${skillCount}_category" class="form-control" placeholder="${isEnglish ? 'Programming languages, frameworks, tools...' : '例如：编程语言、框架、工具等'}" oninput="updatePreview()">
             </div>
             <div class="form-group">
-                <label>技能列表</label>
-                <input type="text" name="skill_${skillCount}_skills" class="form-control" placeholder="用逗号分隔，例如：Python, Java, JavaScript" oninput="updatePreview()">
+                <label>${isEnglish ? 'Skills' : '技能列表'}</label>
+                <input type="text" name="skill_${skillCount}_skills" class="form-control" placeholder="${isEnglish ? 'Separate with commas, e.g. Python, Java, JavaScript' : '用逗号分隔，例如：Python, Java, JavaScript'}" oninput="updatePreview()">
             </div>
         `;
         container.appendChild(entry);
@@ -1333,24 +1822,25 @@
     }
     
     function addProject() {
+        const isEnglish = document.getElementById('resume_language').value === 'en';
         const container = document.getElementById('project-entries');
         const entry = document.createElement('div');
         entry.className = 'entry-card';
         entry.innerHTML = `
             <div class="entry-header">
-                <div class="entry-title">项目 #${projectCount + 1}</div>
-                <button type="button" class="btn-remove" onclick="this.parentElement.parentElement.remove(); updatePreview();">移除</button>
+                <div class="entry-title">${isEnglish ? 'Project' : '项目'} #${projectCount + 1}</div>
+                <button type="button" class="btn-remove" onclick="this.parentElement.parentElement.remove(); updatePreview();">${isEnglish ? 'Remove' : '移除'}</button>
             </div>
             <div class="form-group">
-                <label>项目名称</label>
-                <input type="text" name="project_${projectCount}_name" class="form-control" placeholder="项目名称" oninput="updatePreview()">
+                <label>${isEnglish ? 'Project Name' : '项目名称'}</label>
+                <input type="text" name="project_${projectCount}_name" class="form-control" placeholder="${isEnglish ? 'Project name' : '项目名称'}" oninput="updatePreview()">
             </div>
             <div class="form-group">
-                <label>项目描述</label>
-                <textarea name="project_${projectCount}_description" class="form-control" rows="3" placeholder="项目概述、技术栈、您的贡献等..." oninput="updatePreview()"></textarea>
+                <label>${isEnglish ? 'Project Description' : '项目描述'}</label>
+                <textarea name="project_${projectCount}_description" class="form-control" rows="3" placeholder="${isEnglish ? 'Overview, technology stack, contributions...' : '项目概述、技术栈、您的贡献等...'}" oninput="updatePreview()"></textarea>
             </div>
             <div class="form-group">
-                <label>项目链接</label>
+                <label>${isEnglish ? 'Project Link' : '项目链接'}</label>
                 <input type="url" name="project_${projectCount}_link" class="form-control" placeholder="https://..." oninput="updatePreview()">
             </div>
         `;
@@ -1360,8 +1850,137 @@
         updatePreview();
     }
     
+    function setResumeType(type) {
+        document.getElementById('resume_type').value = type;
+        document.querySelectorAll('[data-resume-type]').forEach(btn => btn.classList.toggle('active', btn.dataset.resumeType === type));
+        updatePreview();
+    }
+
+    function setResumeLanguage(language) {
+        document.getElementById('resume_language').value = language;
+        document.querySelectorAll('[data-resume-language]').forEach(btn => btn.classList.toggle('active', btn.dataset.resumeLanguage === language));
+        updatePreview();
+    }
+
+    function openResumeSection(sectionId) {
+        const section = document.getElementById(sectionId);
+        if (section) section.classList.add('is-open');
+    }
+
+    function toggleResumeSection(sectionId) {
+        const section = document.getElementById(sectionId);
+        if (!section) return;
+        const willOpen = !section.classList.contains('is-open');
+        section.classList.toggle('is-open');
+        if (!willOpen) return;
+
+        if (sectionId === 'education-section' && !document.querySelector('#education-entries .entry-card')) {
+            addEducation();
+        } else if (sectionId === 'work-section' && !document.querySelector('#work-entries .entry-card')) {
+            addWork();
+        } else if (sectionId === 'skill-section' && !document.querySelector('#skill-entries .entry-card')) {
+            addSkill();
+        } else if (sectionId === 'project-section' && !document.querySelector('#project-entries .entry-card')) {
+            addProject();
+        }
+    }
+
+    function collectResumeDraftData() {
+        const form = document.getElementById('resumeForm');
+        const formData = new FormData(form);
+        formData.set('action', 'save_draft');
+        if (photoData) formData.set('photo_data', photoData);
+        return formData;
+    }
+
+    function saveResumeDraft(event) {
+        const btn = event.currentTarget;
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '保存中...';
+        fetch(window.location.href, {
+            method: 'POST',
+            body: collectResumeDraftData(),
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        }).then(r => r.json()).then(data => {
+            if (!data.success) throw new Error(data.error || '保存失败');
+            btn.innerHTML = '已保存';
+            setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 1200);
+        }).catch(err => {
+            alert(err.message || '保存失败');
+            btn.innerHTML = original;
+            btn.disabled = false;
+        });
+    }
+
+    function applyResumeDraft(data) {
+        if (!data) return;
+        const basics = data.basics || {};
+        ['name','gender','birth_date','headline','unit','email','phone','location'].forEach(name => {
+            const input = document.querySelector(`[name="${name}"]`);
+            if (input && basics[name] !== undefined) input.value = basics[name] || '';
+        });
+        const summary = document.querySelector('[name="summary"]');
+        if (summary) summary.value = basics.summary || '';
+        if (basics.photo) {
+            photoData = basics.photo;
+            document.getElementById('photo_data').value = photoData;
+            const preview = document.getElementById('photoPreview');
+            if (preview) {
+                preview.innerHTML = `<img src="${photoData}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                preview.style.borderStyle = 'solid';
+                preview.style.borderColor = 'var(--color-primary-500)';
+            }
+        }
+        setResumeType(data.resume_type || 'academic');
+        setResumeLanguage(data.language || 'zh');
+
+        (data.education || []).forEach(item => {
+            openResumeSection('education-section');
+            addEducation();
+            const index = educationCount - 1;
+            Object.entries(item).forEach(([key, value]) => {
+                const el = document.querySelector(`[name="education_${index}_${key}"]`);
+                if (el) el.value = value || '';
+            });
+        });
+        (data.work || []).forEach(item => {
+            openResumeSection('work-section');
+            addWork();
+            const index = workCount - 1;
+            Object.entries(item).forEach(([key, value]) => {
+                const el = document.querySelector(`[name="work_${index}_${key}"]`);
+                if (el) el.value = value || '';
+            });
+        });
+        (data.skills || []).forEach(item => {
+            openResumeSection('skill-section');
+            addSkill();
+            const index = skillCount - 1;
+            Object.entries(item).forEach(([key, value]) => {
+                const el = document.querySelector(`[name="skill_${index}_${key}"]`);
+                if (el) el.value = value || '';
+            });
+        });
+        (data.projects || []).forEach(item => {
+            openResumeSection('project-section');
+            addProject();
+            const index = projectCount - 1;
+            Object.entries(item).forEach(([key, value]) => {
+                const el = document.querySelector(`[name="project_${index}_${key}"]`);
+                if (el) el.value = value || '';
+            });
+        });
+        updatePreview();
+    }
+
+    const initialResumeData = {{ resume_initial_json|safe }};
+    document.addEventListener('DOMContentLoaded', function() {
+        applyResumeDraft(initialResumeData);
+    });
+
     // 添加事件监听器到基本字段
-    document.querySelectorAll('input[name="name"], input[name="headline"], input[name="email"], input[name="phone"], input[name="location"], textarea[name="summary"]').forEach(field => {
+    document.querySelectorAll('input[name="name"], input[name="gender"], input[name="birth_date"], input[name="headline"], input[name="unit"], input[name="email"], input[name="phone"], input[name="location"], textarea[name="summary"]').forEach(field => {
         field.addEventListener('input', updatePreview);
     });
 </script>

@@ -1,845 +1,335 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}我的主页{% endblock %}
+{% block title %}我的工作台 · LabHub{% endblock %}
 
 {% block content %}
-<style>
-    .profile-hero {
-        background: linear-gradient(135deg, #312e81 0%, #4338ca 50%, #6366f1 100%);
-        border-radius: var(--radius-xl);
-        padding: 36px 40px;
-        margin-bottom: 28px;
-        display: flex;
-        align-items: center;
-        gap: 28px;
-        position: relative;
-        overflow: hidden;
-        color: white;
-    }
-    .profile-hero::before {
-        content: '';
-        position: absolute;
-        top: -40%; right: -5%;
-        width: 350px; height: 350px;
-        background: radial-gradient(circle, rgba(255,255,255,0.08), transparent 70%);
-    }
-    .profile-hero > * { position: relative; z-index: 1; }
-    .profile-hero-avatar {
-        width: 90px; height: 90px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 4px solid rgba(255,255,255,0.25);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-        flex-shrink: 0;
-    }
-    .profile-hero-ph {
-        width: 90px; height: 90px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.15);
-        backdrop-filter: blur(8px);
-        border: 4px solid rgba(255,255,255,0.25);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: white;
-        flex-shrink: 0;
-    }
-    .profile-hero-name {
-        font-size: 1.6rem;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-        margin-bottom: 4px;
-    }
-    .profile-hero-topic {
-        color: rgba(255,255,255,0.6);
-        font-size: 0.92rem;
-    }
-    .profile-hero-stats {
-        display: flex;
-        gap: 24px;
-        margin-top: 14px;
-    }
-    .ph-stat {
-        text-align: center;
-    }
-    .ph-stat-val {
-        font-size: 1.3rem;
-        font-weight: 800;
-    }
-    .ph-stat-label {
-        font-size: 0.75rem;
-        color: rgba(255,255,255,0.5);
-    }
+<section class="workspace-page">
+    <header class="workspace-heading">
+        <h1>我的工作台</h1>
+        <p>个人资料、计划、文档与成果管理</p>
+    </header>
 
-    .section-card {
-        background: var(--color-surface);
-        border-radius: var(--radius-lg);
-        border: 1px solid var(--color-border-light);
-        box-shadow: var(--shadow-sm);
-        overflow: hidden;
-        margin-bottom: 24px;
-    }
-    .section-card-header {
-        padding: 20px 26px;
-        border-bottom: 1px solid var(--color-border-light);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .section-card-header h2 {
-        font-size: 1.05rem;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .section-card-body { padding: 24px 26px; }
-
-    .form-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 18px;
-    }
-
-    .doc-item {
-        border: 1px solid var(--color-border-light);
-        border-radius: var(--radius-md);
-        padding: 16px 18px;
-        margin-bottom: 12px;
-        transition: all 0.25s ease;
-    }
-    .doc-item:hover {
-        border-color: rgba(99,102,241,0.2);
-        box-shadow: var(--shadow-sm);
-    }
-    .doc-item:last-child { margin-bottom: 0; }
-
-    /* Plan list styles - same as plan_list.html */
-    .plan-list-wrap {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        margin-top: 20px;
-    }
-    .plan-list-item {
-        background: var(--color-surface);
-        border-radius: var(--radius-md);
-        padding: 20px 24px;
-        border: 1px solid var(--color-border-light);
-        box-shadow: var(--shadow-sm);
-        transition: all 0.25s ease;
-    }
-    .plan-list-item:hover {
-        border-color: rgba(99,102,241,0.2);
-        box-shadow: var(--shadow-md);
-        transform: translateX(4px);
-    }
-    .plan-list-item.completed {
-        opacity: 0.85;
-    }
-    .sub-plans {
-        margin-left: 20px;
-        border-left: 2px solid var(--color-accent-light);
-        padding-left: 12px;
-        margin-top: 12px;
-    }
-    .sub-plan-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 0;
-        border-bottom: 1px dashed var(--color-border);
-    }
-    .sub-plan-item:last-child {
-        border-bottom: none;
-    }
-
-    .msg-item {
-        display: flex;
-        gap: 14px;
-        padding: 16px 0;
-        border-bottom: 1px solid var(--color-border-light);
-    }
-    .msg-item:last-child { border-bottom: none; }
-    .msg-avatar {
-        width: 36px; height: 36px;
-        border-radius: 50%;
-        flex-shrink: 0;
-    }
-    .msg-avatar img {
-        width: 100%; height: 100%;
-        border-radius: 50%;
-        object-fit: cover;
-    }
-    .msg-avatar-ph {
-        width: 100%; height: 100%;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 700;
-        font-size: 0.75rem;
-    }
-    .new-badge {
-        background: var(--color-accent);
-        color: white;
-        font-size: 0.68rem;
-        font-weight: 700;
-        padding: 2px 7px;
-        border-radius: 10px;
-    }
-
-    .ach-type-badge {
-        padding: 4px 10px;
-        border-radius: 8px;
-        font-size: 0.78rem;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-
-    @media (max-width: 900px) {
-        .profile-hero { flex-direction: column; text-align: center; padding: 28px 24px; }
-        .profile-hero-stats { justify-content: center; }
-    }
-</style>
-
-<!-- Profile Hero -->
-<div class="profile-hero anim-fade-up">
-    {% if profile.avatar %}
-    <img src="{{ profile.avatar.url }}" alt="头像" class="profile-hero-avatar">
-    {% else %}
-    <div class="profile-hero-ph">{{ user.username|first|upper }}</div>
-    {% endif %}
-    <div>
-        <div class="profile-hero-name">{{ user.first_name|default:user.username }}</div>
-        <div class="profile-hero-topic">{{ profile.research_topic|default:"暂未设置研究课题" }}</div>
-        <div class="profile-hero-stats">
-            <div class="ph-stat">
-                <div class="ph-stat-val">{{ plans|length|default:"0" }}</div>
-                <div class="ph-stat-label">计划</div>
-            </div>
-            <div class="ph-stat">
-                <div class="ph-stat-val">{{ documents|length|default:"0" }}</div>
-                <div class="ph-stat-label">文档</div>
-            </div>
-            <div class="ph-stat">
-                <div class="ph-stat-val">{{ achievements|length|default:"0" }}</div>
-                <div class="ph-stat-label">成果</div>
-            </div>
-            <div class="ph-stat">
-                <div class="ph-stat-val">{{ received_messages|length|default:"0" }}</div>
-                <div class="ph-stat-label">留言</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Edit Profile -->
-<div class="section-card anim-fade-up-1">
-    <div class="section-card-header">
-        <h2><span class="icon icon-pencil" style="vertical-align: middle; margin-right: 4px;"></span>个人资料</h2>
-    </div>
-    <div class="section-card-body">
-        <form method="post" action="{% url 'edit_profile' %}" enctype="multipart/form-data">
-            {% csrf_token %}
-            <div class="avatar-upload">
-                {% if profile.avatar %}
-                <img src="{{ profile.avatar.url }}" alt="头像" class="avatar-preview">
-                {% else %}
-                <div class="avatar-preview-placeholder">{{ user.username|first|upper }}</div>
-                {% endif %}
-                <label class="btn btn-secondary btn-sm" style="cursor: pointer;">
-                    更换头像
-                    <input type="file" name="avatar" accept="image/*" style="display: none;">
-                </label>
-            </div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label class="form-label">用户名</label>
-                    <input type="text" value="{{ user.username }}" disabled class="form-input">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">姓名</label>
-                    <input type="text" name="first_name" value="{{ user.first_name }}" class="form-input" placeholder="你的姓名">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">成员类型</label>
-                    <select name="member_type" class="form-input" id="memberTypeSelect">
-                        <option value="master" {% if profile.member_type == 'master' %}selected{% endif %}>硕士研究生</option>
-                        <option value="phd" {% if profile.member_type == 'phd' %}selected{% endif %}>博士研究生</option>
-                    </select>
-                </div>
-                <div class="form-group" id="gradeSelectGroup">
-                    <label class="form-label">年级</label>
-                    <select name="grade" class="form-input">
-                        <option value="1" {% if profile.grade == '1' %}selected{% endif %}>一年级</option>
-                        <option value="2" {% if profile.grade == '2' %}selected{% endif %}>二年级</option>
-                        <option value="3" {% if profile.grade == '3' %}selected{% endif %}>三年级</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">研究课题</label>
-                    <input type="text" name="research_topic" value="{{ profile.research_topic }}" class="form-input" placeholder="研究方向">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">个人主页</label>
-                    <input type="url" name="personal_page" value="{{ profile.personal_page|default:'' }}" placeholder="https://..." class="form-input">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">联系邮箱</label>
-                    <input type="email" name="email" value="{{ profile.email|default:'' }}" class="form-input" placeholder="email@example.com">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">联系电话</label>
-                    <input type="tel" name="phone" value="{{ profile.phone|default:'' }}" class="form-input" placeholder="手机号码">
-                </div>
-            </div>
-            <script>
-                // 根据成员类型显示/隐藏年级选择
-                document.getElementById('memberTypeSelect').addEventListener('change', function() {
-                    var gradeGroup = document.getElementById('gradeSelectGroup');
-                    if (this.value === 'phd') {
-                        gradeGroup.style.display = 'none';
-                    } else {
-                        gradeGroup.style.display = 'block';
-                    }
-                });
-                // 初始化时检查
-                if (document.getElementById('memberTypeSelect').value === 'phd') {
-                    document.getElementById('gradeSelectGroup').style.display = 'none';
-                }
-            </script>
-            <div class="form-group">
-                <label class="form-label">个人简介</label>
-                <textarea name="bio" rows="3" class="form-input" placeholder="介绍一下你自己...">{{ profile.bio|default:'' }}</textarea>
-            </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%;">保存修改</button>
-        </form>
-    </div>
-</div>
-
-<!-- Documents & Plans -->
-<div class="grid grid-2 anim-fade-up-2">
-    <!-- Upload Document -->
-    <div class="section-card">
-        <div class="section-card-header">
-            <h2><span class="icon icon-doc" style="vertical-align: middle; margin-right: 4px;"></span>上传文档</h2>
-        </div>
-        <div class="section-card-body">
-            <form method="post" action="{% url 'add_document' %}" enctype="multipart/form-data">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label class="form-label">文档标题</label>
-                    <input type="text" name="title" required class="form-input" placeholder="文档名称">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">选择文件</label>
-                    <input type="file" name="file" required class="form-input">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">描述</label>
-                    <textarea name="description" rows="2" class="form-input" placeholder="简要描述文档内容"></textarea>
-                </div>
-                <div class="form-group">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.88rem;">
-                        <input type="checkbox" name="is_public" checked style="width: 16px; height: 16px; accent-color: var(--color-accent);">
-                        公开文档（所有人可见）
-                    </label>
-                </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">上传</button>
-            </form>
-
-            {% if documents %}
-            <div class="section-label" style="margin-top: 24px;">已上传</div>
-            {% for doc in documents %}
-            <div class="doc-item">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <span style="font-weight: 600; font-size: 0.93rem;">{{ doc.title }}</span>
-                    <span class="plan-date">{{ doc.uploaded_at|date:"m-d" }}</span>
-                </div>
-                <p style="color: var(--color-text-secondary); font-size: 0.84rem; margin-bottom: 10px;">{{ doc.description|default:"无描述" }}</p>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span class="tag {% if doc.is_public %}tag-public{% else %}tag-private{% endif %}">
-                        {% if doc.is_public %}公开{% else %}私密{% endif %}
-                    </span>
-                    <div style="display: flex; gap: 10px;">
-                        <a href="{% url 'download_document' doc.id %}" class="link" style="font-size: 0.84rem;">下载</a>
-                        <a href="{% url 'delete_document' doc.id %}" onclick="return confirm('确定删除？')" style="color: var(--color-danger); text-decoration: none; font-size: 0.84rem; font-weight: 500;">删除</a>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
+    <section class="workspace-hero" style="background-image:linear-gradient(90deg,rgba(9,44,105,.98),rgba(20,76,154,.9)),url('{% static 'assets/banners/workspace-hero-bg.png' %}');">
+        <div class="workspace-profile">
+            {% if profile.avatar %}
+            <img src="{{ profile.avatar.url }}" alt="头像" class="workspace-avatar">
+            {% else %}
+            <div class="workspace-avatar-fallback">{{ user.first_name|default:user.username|first|upper }}</div>
             {% endif %}
-        </div>
-    </div>
-
-    <!-- Add Plan -->
-    <div class="section-card">
-        <div class="section-card-header">
-            <h2><span class="icon icon-clipboard" style="vertical-align: middle; margin-right: 4px;"></span>添加计划</h2>
-        </div>
-        <div class="section-card-body">
-            <form method="post" action="{% url 'add_plan' %}">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label class="form-label">日期</label>
-                    <input type="date" name="date" required class="form-input">
+            <div class="workspace-profile-main">
+                <div class="workspace-name-line">
+                    <h2>{{ user.first_name|default:user.username }}</h2>
+                    <span>{{ profile.get_member_type_display|default:"硕士研究生" }}</span>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">计划内容</label>
-                    <textarea name="content" rows="3" required class="form-input" placeholder="今天打算做什么？"></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">添加</button>
-            </form>
-
-            {% if plans %}
-            <div style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                <div class="section-label" style="margin: 0;">我的计划</div>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <a href="{% url 'export_data' %}?type=weekly" class="btn btn-sm" style="padding: 6px 14px; font-size: 0.8rem; background: var(--color-accent); color: white;">导出周报</a>
-                    <a href="{% url 'export_data' %}?type=monthly" class="btn btn-sm" style="padding: 6px 14px; font-size: 0.8rem; background: var(--color-success); color: white;">导出月报</a>
-                    <a href="{% url 'export_data' %}?type=yearly" class="btn btn-sm" style="padding: 6px 14px; font-size: 0.8rem; background: var(--color-warning); color: white;">导出年报</a>
-                </div>
+                <p class="workspace-topic">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 20c1.4-3 4.3-5 8-5s6.6 2 8 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    研究方向：{{ profile.research_topic|default:"暂未设置研究方向" }}
+                </p>
+                <p class="workspace-topic">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16v12H4V7ZM4 7l8 7 8-7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                    邮箱：{{ profile.email|default:user.email|default:"未填写" }}
+                    <i></i>
+                    手机：{{ profile.phone|default:"未填写" }}
+                </p>
+                <p class="workspace-topic">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M5 20V7l7-3 7 3v13M9 20v-8h6v8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    所在团队：核电装备与安全研究室
+                    <i></i>
+                    个人主页：{{ profile.personal_page|default:"未填写" }}
+                </p>
             </div>
-            <div class="plan-list-wrap">
-                {% for plan in plans %}
-                <div class="plan-list-item {% if plan.is_completed %}completed{% endif %}" data-plan-id="{{ plan.id }}">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                            <span class="plan-date">{{ plan.date }}</span>
-                            <span class="plan-date-range" data-plan-id="{{ plan.id }}" data-end-date="{{ plan.end_date }}" style="background: var(--color-success-light); color: var(--color-success); padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">
-                                {{ plan.date_range }}
-                            </span>
-                            {% if plan.sub_plans_count > 0 %}
-                            <span class="sub-plan-count" data-plan-id="{{ plan.id }}" style="background: var(--color-accent); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">{{ plan.sub_plans_count }} 个子计划</span>
-                            {% else %}
-                            <span class="sub-plan-count" data-plan-id="{{ plan.id }}" style="display: none; background: var(--color-accent); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">0 个子计划</span>
-                            {% endif %}
-                        </div>
-                        <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
-                            {% if plan.is_completed %}<span class="icon icon-check" style="vertical-align: middle; margin-right: 4px;"></span>已完成{% else %}<span class="icon icon-hourglass" style="vertical-align: middle; margin-right: 4px;"></span>进行中{% endif %}
+        </div>
+        <div class="workspace-hero-stats">
+            <div>
+                <svg viewBox="0 0 24 24" fill="none"><path d="M8 4h8M7 8h10v12H7V8ZM10 12h4M10 16h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>进行中计划</span>
+                <strong>{{ in_progress_plans_count }}</strong>
+                <small>已完成 {{ completed_plans_count }}</small>
+            </div>
+            <div>
+                <svg viewBox="0 0 24 24" fill="none"><path d="M3 8h7l2 2h9v9H3V8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                <span>文档</span>
+                <strong>{{ documents|length }}</strong>
+                <small>公开 {{ public_documents_count }} / 私密 {{ private_documents_count }}</small>
+            </div>
+            <div>
+                <svg viewBox="0 0 24 24" fill="none"><path d="M7 7h10M7 12h10M7 17h10M4 4h16v16H4V4Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>成果</span>
+                <strong>{{ achievements|length }}</strong>
+                <small>公开 {{ public_achievements_count }}</small>
+            </div>
+            <div>
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 12h4l9-5v10l-9-5H4ZM19 10.5a3 3 0 0 1 0 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>公告通知</span>
+                <strong>{{ recent_announcements|length }}</strong>
+                <small>未读消息 {{ unread_message_count }}</small>
+            </div>
+        </div>
+    </section>
+
+    <nav class="workspace-tabs">
+        <a class="{% if active_tab == 'profile' %}active{% endif %}" href="?tab=profile"><svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 20c1.4-3 4.3-5 8-5s6.6 2 8 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>个人资料</a>
+        <a class="{% if active_tab == 'plans' %}active{% endif %}" href="?tab=plans"><svg viewBox="0 0 24 24" fill="none"><path d="M8 4h8M7 8h10v12H7V8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>我的计划</a>
+        <a class="{% if active_tab == 'documents' %}active{% endif %}" href="?tab=documents"><svg viewBox="0 0 24 24" fill="none"><path d="M3 8h7l2 2h9v9H3V8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>我的文档</a>
+        <a class="{% if active_tab == 'achievements' %}active{% endif %}" href="?tab=achievements"><svg viewBox="0 0 24 24" fill="none"><path d="M8 20h8M12 16v4M6 4h12v5a6 6 0 0 1-12 0V4Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>我的成果</a>
+        {% if user.is_superuser or profile.can_post_announcement %}<a class="{% if active_tab == 'management' %}active{% endif %}" href="?tab=management"><svg viewBox="0 0 24 24" fill="none"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>系统管理</a>{% endif %}
+    </nav>
+
+    <div class="workspace-grid">
+        {% if active_tab == 'profile' %}
+        <section class="workspace-card" id="profile">
+            <div class="workspace-card-head">
+                <h3><svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 20c1.4-3 4.3-5 8-5s6.6 2 8 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>个人资料</h3>
+                <a href="#edit-profile">编辑资料 →</a>
+            </div>
+            <dl class="profile-table">
+                <div><dt>姓名</dt><dd>{{ user.first_name|default:user.username }}</dd></div>
+                <div><dt>身份</dt><dd>{{ profile.get_member_type_display|default:"硕士研究生" }}</dd></div>
+                <div><dt>年级</dt><dd>{{ profile.get_grade_display|default:"二年级" }}</dd></div>
+                <div><dt>研究课题</dt><dd>{{ profile.research_topic|default:"暂未设置" }}</dd></div>
+                <div><dt>研究方向</dt><dd>{{ profile.bio|default:"暂未填写"|truncatechars:42 }}</dd></div>
+                <div><dt>个人主页</dt><dd>{{ profile.personal_page|default:"未填写" }}</dd></div>
+                <div><dt>邮箱</dt><dd>{{ profile.email|default:user.email|default:"未填写" }}</dd></div>
+                <div><dt>联系电话</dt><dd>{{ profile.phone|default:"未填写" }}</dd></div>
+            </dl>
+        </section>
+        {% endif %}
+
+        {% if active_tab == 'plans' %}
+        <section class="workspace-card" id="plans">
+            <div class="workspace-card-head">
+                <h3><svg viewBox="0 0 24 24" fill="none"><path d="M8 4h8M7 8h10v12H7V8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>我的计划</h3>
+                <a href="{% url 'plan_list' %}">查看全部计划 →</a>
+            </div>
+            <div class="workspace-plan-list">
+                {% for plan in plans|slice:":5" %}
+                <div class="workspace-plan-row">
+                    <span class="plan-dot {% if plan.is_completed %}done{% endif %}"></span>
+                    <div>
+                        <strong>{{ plan.content|truncatechars:22 }}</strong>
+                        <span>
+                            {% if plan.is_completed %}<b class="badge-green">已完成</b>{% else %}<b class="badge-blue">计划中</b>{% endif %}
+                            <em>{{ plan.workspace_sub_completed }}/{{ plan.workspace_sub_total }} 个子计划</em>
                         </span>
+                        <i><span style="width:{{ plan.workspace_progress }}%"></span></i>
                     </div>
-                    <div style="color: var(--color-text-primary); font-size: 0.93rem; line-height: 1.7; margin-bottom: 8px;">{{ plan.content }}</div>
-                    
-                    <div class="sub-plans" data-plan-id="{{ plan.id }}" {% if not plan.sub_plans.all %}style="display: none;"{% endif %}>
-                        {% for sub_plan in plan.sub_plans.all %}
-                        <div class="sub-plan-item" data-sub-plan-id="{{ sub_plan.id }}">
-                            <span style="color: var(--color-accent);">↳</span>
-                            <span class="{% if sub_plan.is_completed %}completed{% endif %}" style="flex: 1; {% if sub_plan.is_completed %}text-decoration: line-through; color: var(--color-text-tertiary);{% endif %}">{{ sub_plan.content }}</span>
-                            <span class="plan-status {% if sub_plan.is_completed %}status-completed{% else %}status-pending{% endif %}" style="font-size: 0.75rem;">
-                                {% if sub_plan.is_completed %}✓{% else %}○{% endif %}
-                            </span>
-                            <button onclick="togglePlan({{ sub_plan.id }})" style="padding: 2px 6px; font-size: 0.7rem; border: none; background: var(--color-accent-light); border-radius: 4px; cursor: pointer;">切换</button>
-                            <a href="{% url 'edit_plan' sub_plan.id %}" class="btn btn-sm" style="padding: 2px 8px; font-size: 0.7rem;">编辑</a>
-                            <a href="{% url 'delete_plan' sub_plan.id %}" class="btn btn-sm" style="padding: 2px 8px; font-size: 0.7rem; color: var(--color-danger);" onclick="return confirm('确定删除这个子计划？')">删除</a>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    
-                    <div style="margin-top: 10px; display: flex; gap: 8px;">
-                        <button onclick="togglePlan({{ plan.id }})" class="btn btn-sm" style="padding: 4px 12px; font-size: 0.8rem;">
-                            {% if plan.is_completed %}标记未完成{% else %}标记完成{% endif %}
-                        </button>
-                        <button onclick="addSubPlan({{ plan.id }})" class="btn btn-sm" style="padding: 4px 12px; font-size: 0.8rem; background: var(--color-accent);">
-                            + 子计划
-                        </button>
-                        <a href="{% url 'edit_plan' plan.id %}" class="btn btn-sm" style="padding: 4px 12px; font-size: 0.8rem;">编辑</a>
-                        <a href="{% url 'delete_plan' plan.id %}" class="btn btn-sm" style="padding: 4px 12px; font-size: 0.8rem; color: var(--color-danger);">删除</a>
-                    </div>
+                    <time>{{ plan.workspace_status }} · {{ plan.end_date|date:"m-d"|default:plan.date|date:"m-d" }}</time>
                 </div>
+                {% empty %}
+                <div class="mini-empty">暂无计划</div>
+                {% endfor %}
+                <a class="workspace-add-link" href="#add-plan">+ 新建计划</a>
+            </div>
+        </section>
+        {% endif %}
+
+        {% if active_tab == 'documents' %}
+        <section class="workspace-card" id="documents">
+            <div class="workspace-card-head">
+                <h3><svg viewBox="0 0 24 24" fill="none"><path d="M3 8h7l2 2h9v9H3V8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>最近文档</h3>
+                <a href="{% url 'document_list' %}">查看全部文档 →</a>
+            </div>
+            <div class="workspace-doc-list">
+                {% for doc in documents|slice:":5" %}
+                <div>
+                    {% with name=doc.title|lower %}
+                    {% if ".pdf" in name %}<img src="{% static 'assets/file-icons/pdf.png' %}" alt="">
+                    {% elif ".xlsx" in name or ".xls" in name %}<img src="{% static 'assets/file-icons/excel.png' %}" alt="">
+                    {% elif ".ppt" in name %}<img src="{% static 'assets/file-icons/ppt.png' %}" alt="">
+                    {% elif ".doc" in name %}<img src="{% static 'assets/file-icons/word.png' %}" alt="">
+                    {% else %}<img src="{% static 'assets/file-icons/txt.png' %}" alt="">{% endif %}
+                    {% endwith %}
+                    <strong>{{ doc.title }}</strong>
+                    <span>{{ doc.uploaded_at|date:"m-d H:i" }}</span>
+                </div>
+                {% empty %}
+                <div class="mini-empty">暂无文档</div>
                 {% endfor %}
             </div>
-            {% endif %}
-        </div>
-    </div>
-</div>
+            <div class="workspace-card-actions">
+                <a href="#upload-document">上传文档</a>
+                <a href="{% url 'document_list' %}?uploader={{ user.username|urlencode }}">查看我的文档</a>
+            </div>
+        </section>
+        {% endif %}
 
-<!-- Add Achievement -->
-<div class="section-card anim-fade-up-3">
-    <div class="section-card-header">
-        <h2><span class="icon icon-trophy" style="vertical-align: middle; margin-right: 4px;"></span>添加成果</h2>
-    </div>
-    <div class="section-card-body">
-        <form method="post" action="{% url 'add_achievement' %}" enctype="multipart/form-data">
-            {% csrf_token %}
-            <div class="form-grid">
-                <div class="form-group">
-                    <label class="form-label">成果名称 *</label>
-                    <input type="text" name="title" required class="form-input" placeholder="论文/专利/奖项名称">
+        {% if active_tab == 'achievements' %}
+        <section class="workspace-card" id="achievements">
+            <div class="workspace-card-head">
+                <h3><svg viewBox="0 0 24 24" fill="none"><path d="M8 20h8M12 16v4M6 4h12v5a6 6 0 0 1-12 0V4Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>我的成果</h3>
+                <a href="#add-achievement">登记成果 →</a>
+            </div>
+            <div class="workspace-table">
+                <div class="workspace-table-head"><span>成果名称</span><span>类型</span><span>状态</span><span>发表/完成时间</span></div>
+                {% for ach in achievements|slice:":4" %}
+                <div>
+                    <span>{{ ach.title|truncatechars:20 }}</span>
+                    <span>{{ ach.get_achievement_type_display }}</span>
+                    <span><b class="badge-green">已完成</b></span>
+                    <span>{{ ach.date|date:"Y-m-d"|default:"-" }}</span>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">类型 *</label>
-                    <select name="achievement_type" required class="form-input">
-                        <option value="">请选择</option>
-                        <option value="paper"><span class="icon icon-paper" style="vertical-align: middle; margin-right: 4px;"></span>论文</option>
-                        <option value="patent"><span class="icon icon-patent" style="vertical-align: middle; margin-right: 4px;"></span>专利</option>
-                        <option value="award"><span class="icon icon-trophy" style="vertical-align: middle; margin-right: 4px;"></span>奖项</option>
-                        <option value="project"><span class="icon icon-folder" style="vertical-align: middle; margin-right: 4px;"></span>项目</option>
-                        <option value="other"><span class="icon icon-pin" style="vertical-align: middle; margin-right: 4px;"></span>其他</option>
+                {% empty %}
+                <div class="mini-empty">暂无成果</div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if active_tab == 'profile' %}
+        <section class="workspace-card">
+            <div class="workspace-card-head">
+                <h3><svg viewBox="0 0 24 24" fill="none"><path d="M4 12h4l9-5v10l-9-5H4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>公告通知</h3>
+                <a href="{% url 'announcement_list' %}">查看全部公告 →</a>
+            </div>
+            <div class="workspace-notice-list">
+                {% for ann in recent_announcements %}
+                <div>
+                    {% if ann.is_pinned %}<b class="badge-red">重要</b>{% else %}<b class="badge-blue">通知</b>{% endif %}
+                    <strong>{{ ann.title|truncatechars:24 }}</strong>
+                    <span>{{ ann.author.first_name|default:ann.author.username }}</span>
+                    <time>{{ ann.created_at|date:"m-d H:i" }}</time>
+                </div>
+                {% empty %}
+                <div class="mini-empty">暂无公告</div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if active_tab == 'management' %}
+        <section class="workspace-card" id="management">
+            <div class="workspace-card-head">
+                <h3><svg viewBox="0 0 24 24" fill="none"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="1.8"/></svg>快速入口</h3>
+            </div>
+            <div class="quick-grid">
+                <a href="?tab=plans#add-plan"><span>▣</span>新建计划</a>
+                <a href="?tab=documents#upload-document"><span>☁</span>上传文档</a>
+                <a href="?tab=achievements#add-achievement"><span>□</span>成果登记</a>
+                {% if user.is_superuser or profile.can_post_announcement %}<a href="#announcements"><span>♢</span>发布公告</a>{% endif %}
+                <a href="{% url 'member_list' %}"><span>●</span>成员管理</a>
+                {% if user.is_superuser %}<a href="/admin/lab_management/userprofile/"><span>盾</span>权限管理</a>{% endif %}
+                <a href="{% url 'team_overview' %}"><span>◔</span>数据统计</a>
+                {% if user.is_superuser %}<a href="/admin/"><span>⚙</span>系统设置</a>{% endif %}
+            </div>
+        </section>
+        {% endif %}
+    </div>
+
+    <section class="workspace-forms">
+        {% if active_tab == 'profile' %}
+        <details class="workspace-form-panel" id="edit-profile">
+            <summary>编辑个人资料</summary>
+            <form method="post" action="{% url 'edit_profile' %}" enctype="multipart/form-data" class="workspace-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'my_page' %}?tab=profile">
+                <div class="form-grid">
+                    <label>头像<input type="file" name="avatar" accept="image/*" class="form-input"></label>
+                    <label>姓名<input type="text" name="first_name" value="{{ user.first_name }}" class="form-input"></label>
+                    <label>成员类型<select name="member_type" class="form-input"><option value="phd" {% if profile.member_type == 'phd' %}selected{% endif %}>博士研究生</option><option value="master" {% if profile.member_type == 'master' %}selected{% endif %}>硕士研究生</option><option value="undergraduate" {% if profile.member_type == 'undergraduate' %}selected{% endif %}>本科生</option><option value="graduated" {% if profile.member_type == 'graduated' %}selected{% endif %}>已毕业</option></select></label>
+                    <label>年级<select name="grade" class="form-input"><option value="1" {% if profile.grade == '1' %}selected{% endif %}>一年级</option><option value="2" {% if profile.grade == '2' %}selected{% endif %}>二年级</option><option value="3" {% if profile.grade == '3' %}selected{% endif %}>三年级</option></select></label>
+                    <label>研究课题<input type="text" name="research_topic" value="{{ profile.research_topic }}" class="form-input"></label>
+                    <label>个人主页<input type="url" name="personal_page" value="{{ profile.personal_page|default:'' }}" class="form-input"></label>
+                    <label>联系邮箱<input type="email" name="email" value="{{ profile.email|default:'' }}" class="form-input"></label>
+                    <label>联系电话<input type="tel" name="phone" value="{{ profile.phone|default:'' }}" class="form-input"></label>
+                </div>
+                <label>个人简介<textarea name="bio" rows="3" class="form-input">{{ profile.bio|default:'' }}</textarea></label>
+                <button type="submit" class="btn btn-primary">保存修改</button>
+            </form>
+        </details>
+        {% endif %}
+
+        {% if active_tab == 'plans' %}
+        <details class="workspace-form-panel" id="add-plan">
+            <summary>新建计划</summary>
+            <form method="post" action="{% url 'add_plan' %}" class="workspace-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'my_page' %}?tab=plans">
+                <label>日期<input type="date" name="date" required class="form-input"></label>
+                <label>计划内容<textarea name="content" rows="3" required class="form-input" placeholder="请输入计划内容"></textarea></label>
+                <button type="submit" class="btn btn-primary">添加计划</button>
+            </form>
+        </details>
+        {% endif %}
+
+        {% if active_tab == 'documents' %}
+        <details class="workspace-form-panel" id="upload-document">
+            <summary>上传文档</summary>
+            <form method="post" action="{% url 'add_document' %}" enctype="multipart/form-data" class="workspace-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'my_page' %}?tab=documents">
+                <div class="form-grid">
+                    <label>文档标题<input type="text" name="title" required class="form-input"></label>
+                    <label>选择文件<input type="file" name="file" required class="form-input"></label>
+                    <label>文档分类<select name="category" class="form-input"><option value="project">项目文档</option><option value="paper">论文资料</option><option value="experiment">实验数据</option><option value="learning">学习资料</option><option value="meeting">会议资料</option></select></label>
+                </div>
+                <label>描述<textarea name="description" rows="2" class="form-input"></textarea></label>
+                <label class="check-line"><input type="checkbox" name="is_public" checked>公开文档（所有人可见）</label>
+                <button type="submit" class="btn btn-primary">上传文档</button>
+            </form>
+        </details>
+        {% endif %}
+
+        {% if active_tab == 'achievements' %}
+        <details class="workspace-form-panel" id="add-achievement">
+            <summary>登记成果</summary>
+            <form method="post" action="{% url 'add_achievement' %}" enctype="multipart/form-data" class="workspace-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'my_page' %}?tab=achievements">
+                <div class="form-grid">
+                    <label>成果名称<input type="text" name="title" required class="form-input"></label>
+                    <label>类型<select name="achievement_type" required class="form-input"><option value="paper">论文</option><option value="patent">专利</option><option value="award">奖项</option><option value="project">项目</option><option value="other">其他</option></select></label>
+                    <label>日期<input type="date" name="date" class="form-input"></label>
+                    <label>附件<input type="file" name="file" class="form-input"></label>
+                </div>
+                <label>链接<input type="url" name="link" class="form-input"></label>
+                <label>描述<textarea name="description" rows="2" class="form-input"></textarea></label>
+                <label class="check-line"><input type="checkbox" name="is_public" checked>公开（团队可见）</label>
+                <button type="submit" class="btn btn-primary">添加成果</button>
+            </form>
+        </details>
+        {% endif %}
+
+        {% if active_tab == 'management' %}
+        {% if user.is_authenticated %}
+        <details class="workspace-form-panel" id="announcements">
+            <summary>发布公告</summary>
+            <form method="post" action="{% url 'add_announcement' %}" class="workspace-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'my_page' %}?tab=management">
+                <label>标题<input type="text" name="title" required class="form-input"></label>
+                <label>公告类型
+                    <select name="category" class="form-input">
+                        <option value="system">系统公告</option>
+                        <option value="academic">学术通知</option>
+                        <option value="team">团队动态</option>
+                        <option value="important">重要通知</option>
                     </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">日期</label>
-                    <input type="date" name="date" class="form-input">
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">描述</label>
-                <textarea name="description" rows="2" class="form-input" placeholder="简要描述成果内容"></textarea>
-            </div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label class="form-label">链接</label>
-                    <input type="url" name="link" class="form-input" placeholder="相关链接">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">附件</label>
-                    <input type="file" name="file" class="form-input">
-                </div>
-            </div>
-            <div class="form-group">
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.88rem;">
-                    <input type="checkbox" name="is_public" checked style="width: 16px; height: 16px; accent-color: var(--color-accent);">
-                    公开（团队可见）
                 </label>
-            </div>
-            <button type="submit" class="btn btn-primary">添加成果</button>
-        </form>
-
-        {% if achievements %}
-        <div class="section-label" style="margin-top: 24px;">我的成果</div>
-        {% for ach in achievements %}
-        <div class="doc-item">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; gap: 8px;">
-                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                    <span class="ach-type-badge" style="background: {% if ach.achievement_type == 'paper' %}rgba(37,99,235,0.1);color:#2563eb{% elif ach.achievement_type == 'patent' %}rgba(16,185,129,0.1);color:#10b981{% elif ach.achievement_type == 'award' %}rgba(245,158,11,0.1);color:#f59e0b{% else %}rgba(100,116,139,0.1);color:#64748b{% endif %};">
-                        {% if ach.achievement_type == 'paper' %}<span class="icon icon-paper" style="vertical-align: middle; margin-right: 4px;"></span>论文{% elif ach.achievement_type == 'patent' %}<span class="icon icon-patent" style="vertical-align: middle; margin-right: 4px;"></span>专利{% elif ach.achievement_type == 'award' %}<span class="icon icon-trophy" style="vertical-align: middle; margin-right: 4px;"></span>奖项{% elif ach.achievement_type == 'project' %}<span class="icon icon-folder" style="vertical-align: middle; margin-right: 4px;"></span>项目{% else %}<span class="icon icon-pin" style="vertical-align: middle; margin-right: 4px;"></span>其他{% endif %}
-                    </span>
-                    <span style="font-weight: 600; font-size: 0.93rem;">{{ ach.title }}</span>
-                </div>
-                <span class="plan-date">{{ ach.date|date:"Y-m-d"|default:"" }}</span>
-            </div>
-            {% if ach.description %}
-            <p style="color: var(--color-text-secondary); font-size: 0.85rem; margin-bottom: 8px;">{{ ach.description }}</p>
-            {% endif %}
-            <div style="display: flex; gap: 12px; align-items: center;">
-                {% if ach.link %}<a href="{{ ach.link }}" target="_blank" class="link" style="font-size: 0.84rem;">链接 ↗</a>{% endif %}
-                {% if ach.file %}<a href="{{ ach.file.url }}" class="link" style="font-size: 0.84rem;" download>附件 ↓</a>{% endif %}
-                <a href="{% url 'delete_achievement' ach.id %}" onclick="return confirm('确定删除？')" style="color: var(--color-danger); text-decoration: none; font-size: 0.84rem; font-weight: 500;">删除</a>
-            </div>
-        </div>
-        {% endfor %}
+                <label>内容<textarea name="content" rows="4" required class="form-input"></textarea></label>
+                {% if user.is_superuser %}<label class="check-line"><input type="checkbox" name="is_pinned">置顶公告</label>{% endif %}
+                <label class="check-line"><input type="checkbox" name="comments_enabled" checked>开启评论</label>
+                <button type="submit" class="btn btn-primary">发布公告</button>
+            </form>
+        </details>
         {% endif %}
-    </div>
-</div>
 
-<!-- Announcement -->
-{% if user.is_authenticated %}
-<div class="section-card anim-fade-up-5">
-    <div class="section-card-header">
-        <h2><span class="icon icon-bullhorn" style="vertical-align: middle; margin-right: 4px;"></span>发布公告</h2>
-    </div>
-    <div class="section-card-body">
-        <form method="post" action="{% url 'add_announcement' %}">
-            {% csrf_token %}
-            <div class="form-group">
-                <label class="form-label">标题</label>
-                <input type="text" name="title" required class="form-input" placeholder="公告标题">
-            </div>
-            <div class="form-group">
-                <label class="form-label">内容</label>
-                <textarea name="content" rows="4" required class="form-input" placeholder="公告内容..."></textarea>
-            </div>
-            {% if user.is_superuser %}
-            <div class="form-group">
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.88rem;">
-                    <input type="checkbox" name="is_pinned" style="width: 16px; height: 16px; accent-color: var(--color-accent);">
-                    <span class="icon icon-pushpin" style="vertical-align: middle;"></span> 置顶公告
-                </label>
-            </div>
-            {% endif %}
-            <button type="submit" class="btn btn-primary">发布</button>
-        </form>
-    </div>
-</div>
-{% endif %}
-
-<!-- Messages -->
-<div class="section-card anim-fade-up-6" id="messages">
-    <div class="section-card-header">
-        <h2>💬 收到的留言</h2>
-        {% if received_messages %}<span class="tag tag-primary">{{ received_messages|length }}</span>{% endif %}
-    </div>
-    <div class="section-card-body">
-        {% if received_messages %}
-        {% for msg in received_messages %}
-        <div class="msg-item">
-            <div class="msg-avatar">
-                {% if msg.sender.profile.avatar %}
-                <img src="{{ msg.sender.profile.avatar.url }}" alt="">
-                {% else %}
-                <div class="msg-avatar-ph">{{ msg.sender.username|first|upper }}</div>
-                {% endif %}
-            </div>
-            <div style="flex: 1; min-width: 0;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap;">
-                    <span style="font-weight: 600; font-size: 0.9rem;">{{ msg.sender.first_name|default:msg.sender.username }}</span>
-                    <span class="plan-date">{{ msg.created_at|date:"Y-m-d H:i" }}</span>
-                    {% if not msg.is_read %}<span class="new-badge">新</span>{% endif %}
+        <details class="workspace-form-panel" id="messages">
+            <summary>收到的留言{% if received_messages %}（{{ received_messages|length }}）{% endif %}</summary>
+            <div class="workspace-message-list">
+                {% for msg in received_messages %}
+                <div>
+                    <strong>{{ msg.sender.first_name|default:msg.sender.username }}</strong>
+                    <span>{{ msg.created_at|date:"Y-m-d H:i" }}</span>
+                    <p>{{ msg.content }}</p>
+                    <a href="{% url 'delete_message' msg.id %}" onclick="return confirm('确定删除？')">删除</a>
                 </div>
-                <p style="color: var(--color-text-primary); font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap;">{{ msg.content }}</p>
+                {% empty %}
+                <div class="mini-empty">暂无留言</div>
+                {% endfor %}
             </div>
-            <a href="{% url 'delete_message' msg.id %}" onclick="return confirm('确定删除？')" style="color: var(--color-danger); text-decoration: none; font-size: 0.8rem; flex-shrink: 0;">删除</a>
-        </div>
-        {% endfor %}
-        {% else %}
-        <div class="empty-state" style="padding: 32px 16px;">
-            <div class="empty-state-icon">💬</div>
-            <p>暂无留言</p>
-        </div>
+        </details>
         {% endif %}
-    </div>
-</div>
-
-<!-- 添加子计划的弹窗 -->
-<div id="subPlanModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
-    <div style="background: white; padding: 24px; border-radius: 12px; max-width: 400px; width: 90%;">
-        <h3 style="margin-top: 0;">添加子计划</h3>
-        <form id="subPlanForm">
-            {% csrf_token %}
-            <input type="hidden" name="parent_id" id="parentPlanId">
-            <div style="margin-bottom: 16px;">
-                <label style="display: block; margin-bottom: 6px; font-weight: 500;">子计划内容</label>
-                <textarea name="content" id="subPlanContent" required style="width: 100%; padding: 10px; border: 1px solid var(--color-border); border-radius: 8px; resize: vertical; min-height: 80px; font-family: inherit;" placeholder="输入子计划内容..."></textarea>
-            </div>
-            <div style="margin-bottom: 16px;">
-                <label style="display: block; margin-bottom: 6px; font-weight: 500;">日期</label>
-                <input type="date" name="date" id="subPlanDate" required style="width: 100%; padding: 10px; border: 1px solid var(--color-border); border-radius: 8px;">
-            </div>
-            <div id="subPlanError" style="display: none; color: var(--color-danger); font-size: 0.85rem; margin-bottom: 12px; padding: 8px; background: rgba(239,68,68,0.1); border-radius: 6px;"></div>
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                <button type="button" onclick="closeSubPlanModal()" style="padding: 8px 16px; border: none; background: var(--color-bg); border-radius: 8px; cursor: pointer;">取消</button>
-                <button type="submit" id="subPlanSubmitBtn" style="padding: 8px 16px; border: none; background: var(--color-accent); color: white; border-radius: 8px; cursor: pointer;">保存</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-// 获取 CSRF Token
-function getCsrfToken() {
-    var match = document.cookie.match(/csrftoken=([^;]+)/);
-    return match ? match[1] : '';
-}
-
-function addSubPlan(planId) {
-    document.getElementById('parentPlanId').value = planId;
-    document.getElementById('subPlanModal').style.display = 'flex';
-    document.getElementById('subPlanError').style.display = 'none';
-    
-    // 设置默认日期为今天
-    var today = new Date().toISOString().split('T')[0];
-    document.getElementById('subPlanDate').value = today;
-    document.getElementById('subPlanContent').focus();
-}
-
-function closeSubPlanModal() {
-    document.getElementById('subPlanModal').style.display = 'none';
-    document.getElementById('subPlanContent').value = '';
-    document.getElementById('subPlanError').style.display = 'none';
-}
-
-// 关闭弹窗点击背景
-document.getElementById('subPlanModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeSubPlanModal();
-    }
-});
-
-// AJAX 提交子计划表单
-document.getElementById('subPlanForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    var parentId = document.getElementById('parentPlanId').value;
-    var content = document.getElementById('subPlanContent').value.trim();
-    var date = document.getElementById('subPlanDate').value;
-    var submitBtn = document.getElementById('subPlanSubmitBtn');
-    var errorDiv = document.getElementById('subPlanError');
-    
-    if (!content) {
-        errorDiv.textContent = '请填写子计划内容';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    
-    // 禁用提交按钮
-    submitBtn.disabled = true;
-    submitBtn.textContent = '保存中...';
-    errorDiv.style.display = 'none';
-    
-    // 发送 AJAX 请求
-    fetch('/api/subplan/add/', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCsrfToken(),
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'parent_id=' + encodeURIComponent(parentId) + 
-              '&content=' + encodeURIComponent(content) + 
-              '&date=' + encodeURIComponent(date)
-    })
-    .then(response => response.json())
-    .then(data => {
-        submitBtn.disabled = false;
-        submitBtn.textContent = '保存';
-        
-        if (data.success) {
-            // 添加子计划到 DOM
-            addSubPlanToDOM(data.sub_plan);
-            // 更新主计划的时间跨度
-            updatePlanDateRange(data.sub_plan.parent_id, data.sub_plan.parent_date_range, data.sub_plan.parent_end_date);
-            // 关闭弹窗
-            closeSubPlanModal();
-        } else {
-            errorDiv.textContent = data.error || '添加失败，请重试';
-            errorDiv.style.display = 'block';
-        }
-    })
-    .catch(error => {
-        submitBtn.disabled = false;
-        submitBtn.textContent = '保存';
-        errorDiv.textContent = '网络错误，请重试';
-        errorDiv.style.display = 'block';
-        console.error('Error:', error);
-    });
-});
-
-// 动态添加子计划到 DOM
-function addSubPlanToDOM(subPlan) {
-    var subPlansContainer = document.querySelector('.sub-plans[data-plan-id="' + subPlan.parent_id + '"]');
-    if (!subPlansContainer) return;
-    
-    // 显示子计划容器
-    subPlansContainer.style.display = 'block';
-    
-    // 创建子计划元素
-    var subPlanDiv = document.createElement('div');
-    subPlanDiv.className = 'sub-plan-item';
-    subPlanDiv.setAttribute('data-sub-plan-id', subPlan.id);
-    subPlanDiv.innerHTML = 
-        '<span style="color: var(--color-accent);">↳</span>' +
-        '<span style="flex: 1;">' + escapeHtml(subPlan.content) + '</span>' +
-        '<span class="plan-status status-pending" style="font-size: 0.75rem;">○</span>' +
-        '<button onclick="togglePlan(' + subPlan.id + ')" style="padding: 2px 6px; font-size: 0.7rem; border: none; background: var(--color-accent-light); border-radius: 4px; cursor: pointer;">切换</button>' +
-        '<a href="/edit/plan/' + subPlan.id + '/" class="btn btn-sm" style="padding: 2px 8px; font-size: 0.7rem;">编辑</a>' +
-        '<a href="/delete/plan/' + subPlan.id + '/" class="btn btn-sm" style="padding: 2px 8px; font-size: 0.7rem; color: var(--color-danger);" onclick="return confirm(\'确定删除这个子计划？\')">删除</a>';
-    
-    subPlansContainer.appendChild(subPlanDiv);
-    
-    // 更新子计划数量标签
-    updateSubPlanCount(subPlan.parent_id);
-}
-
-// 更新子计划数量
-function updateSubPlanCount(planId) {
-    var countSpan = document.querySelector('.sub-plan-count[data-plan-id="' + planId + '"]');
-    if (countSpan) {
-        var subPlansContainer = document.querySelector('.sub-plans[data-plan-id="' + planId + '"]');
-        var count = subPlansContainer ? subPlansContainer.querySelectorAll('.sub-plan-item').length : 0;
-        countSpan.textContent = count + ' 个子计划';
-        countSpan.style.display = 'inline-block';
-    }
-}
-
-// 更新主计划时间跨度
-function updatePlanDateRange(planId, dateRange, endDate) {
-    var dateRangeSpan = document.querySelector('.plan-date-range[data-plan-id="' + planId + '"]');
-    if (dateRangeSpan) {
-        dateRangeSpan.textContent = dateRange;
-        dateRangeSpan.setAttribute('data-end-date', endDate || '');
-    }
-}
-
-// HTML 转义函数
-function escapeHtml(text) {
-    var div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function togglePlan(planId) {
-    fetch('/toggle/plan/' + planId + '/', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCsrfToken(),
-            'Content-Type': 'application/x-www-form-urlencoded',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // 先尝试更新子计划状态
-            var subPlanItem = document.querySelector('.sub-plan-item[data-sub-plan-id="' + planId + '"]');
-            if (subPlanItem) {
-                var statusSpan = subPlanItem.querySelector('.plan-status');
-                var contentSpan = subPlanItem.querySelector('span:nth-child(2)');
-                if (statusSpan && contentSpan) {
-                    // 切换状态显示
-                    var isCompleted = statusSpan.textContent.trim() === '✓';
-                    if (isCompleted) {
-                        statusSpan.textContent = '○';
-                        statusSpan.className = 'plan-status status-pending';
-                        contentSpan.style.textDecoration = 'none';
-                        contentSpan.style.color = 'inherit';
-                    } else {
-                        statusSpan.textContent = '✓';
-                        statusSpan.className = 'plan-status status-completed';
-                        contentSpan.style.textDecoration = 'line-through';
-                        contentSpan.style.color = 'var(--color-text-tertiary)';
-                    }
-                }
-                return;
-            }
-            
-            // 如果不是子计划，则更新主计划状态
-            var planItem = document.querySelector('.plan-list-item[data-plan-id="' + planId + '"]');
-            if (planItem) {
-                // 找到主计划的状态标签和按钮
-                var planStatusSpan = planItem.querySelector('.plan-status');
-                var toggleBtn = planItem.querySelector('button[onclick="togglePlan(' + planId + ')"]');
-                
-                if (planStatusSpan && toggleBtn) {
-                    var isPlanCompleted = planStatusSpan.classList.contains('status-completed');
-                    if (isPlanCompleted) {
-                        // 变为未完成
-                        planStatusSpan.className = 'plan-status status-pending';
-                        planStatusSpan.innerHTML = '<span class="icon icon-hourglass" style="vertical-align: middle; margin-right: 4px;"></span>进行中';
-                        toggleBtn.textContent = '标记完成';
-                        planItem.classList.remove('completed');
-                    } else {
-                        // 变为已完成
-                        planStatusSpan.className = 'plan-status status-completed';
-                        planStatusSpan.innerHTML = '<span class="icon icon-check" style="vertical-align: middle; margin-right: 4px;"></span>已完成';
-                        toggleBtn.textContent = '标记未完成';
-                        planItem.classList.add('completed');
-                    }
-                }
-            }
-        } else {
-            alert(data.error || '操作失败');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('网络错误，请重试');
-    });
-}
-</script>
+    </section>
+</section>
 {% endblock %}

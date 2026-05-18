@@ -8,6 +8,7 @@ from django.conf import settings
 from django.http import FileResponse, HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.db import models
+from django.core.paginator import Paginator
 from django.utils import timezone
 import os
 import json
@@ -17,7 +18,7 @@ import base64
 import time
 from datetime import datetime
 import requests
-from .models import UserProfile, Document, DailyPlan, Announcement, AnnouncementComment, Achievement, Message
+from .models import UserProfile, Document, DailyPlan, Announcement, AnnouncementComment, Achievement, Message, ResumeDraft
 
 
 class UserRegistrationForm(forms.ModelForm):
@@ -106,7 +107,8 @@ def home(request):
     
     announcements = Announcement.objects.all()[:3]
     announcement_count = Announcement.objects.count()
-    document_count = Document.objects.filter(is_public=True).count()
+    public_documents = Document.objects.select_related('user').filter(is_public=True)
+    document_count = public_documents.count()
     
     # 获取当前用户的所有计划
     if request.user.is_authenticated:
@@ -171,29 +173,114 @@ def home(request):
         'announcements': announcements,
         'announcement_count': announcement_count,
         'document_count': document_count,
+        'recent_documents': public_documents[:5],
     }
     return render(request, 'lab_management/home.html', context)
 
 
 def member_list(request):
-    # 获取所有非管理员成员并按分类筛选
+    member_type_filter = request.GET.get('member_type', 'all')
+    query = request.GET.get('q', '').strip()
+    sort = request.GET.get('sort', 'grade')
+    view = request.GET.get('view', 'grid')
+    valid_types = {'all', 'phd', 'master', 'undergraduate', 'graduated'}
+    valid_sorts = {'grade', 'plans', 'updated'}
+    valid_views = {'grid', 'list'}
+    if member_type_filter not in valid_types:
+        member_type_filter = 'all'
+    if sort not in valid_sorts:
+        sort = 'grade'
+    if view not in valid_views:
+        view = 'grid'
+
+    # 获取所有非管理员成员，统计数据基于全量，列表基于筛选结果
     all_members = UserProfile.objects.select_related('user').filter(user__is_superuser=False)
-    
-    # 博士成员
+
+    active_plan_counts = {}
+    completed_plan_counts = {}
+    latest_plan_dates = {}
+    for row in DailyPlan.objects.filter(
+        user__is_superuser=False,
+        parent__isnull=True,
+        is_public=True,
+        is_completed=False,
+    ).values('user_id').annotate(count=models.Count('id')):
+        active_plan_counts[row['user_id']] = row['count']
+    for row in DailyPlan.objects.filter(
+        user__is_superuser=False,
+        parent__isnull=True,
+        is_public=True,
+        is_completed=True,
+    ).values('user_id').annotate(count=models.Count('id')):
+        completed_plan_counts[row['user_id']] = row['count']
+    for row in DailyPlan.objects.filter(
+        user__is_superuser=False,
+        parent__isnull=True,
+        is_public=True,
+    ).values('user_id').annotate(latest=models.Max('date')):
+        latest_plan_dates[row['user_id']] = row['latest']
+
     phd_members = all_members.filter(member_type='phd')
-    
-    # 硕士成员
     master_members = all_members.filter(member_type='master')
+    undergraduate_members = all_members.filter(member_type='undergraduate')
+    graduated_members = all_members.filter(member_type='graduated')
     master_grade1 = master_members.filter(grade='1')
     master_grade2 = master_members.filter(grade='2')
     master_grade3 = master_members.filter(grade='3')
+
+    filtered_members = all_members
+    if member_type_filter != 'all':
+        filtered_members = filtered_members.filter(member_type=member_type_filter)
+    if query:
+        filtered_members = filtered_members.filter(
+            models.Q(user__first_name__icontains=query) |
+            models.Q(user__username__icontains=query) |
+            models.Q(research_topic__icontains=query) |
+            models.Q(bio__icontains=query) |
+            models.Q(email__icontains=query)
+        )
+
+    member_cards = []
+    for profile in filtered_members:
+        active_count = active_plan_counts.get(profile.user_id, 0)
+        completed_count = completed_plan_counts.get(profile.user_id, 0)
+        total_count = active_count + completed_count
+        member_cards.append({
+            'profile': profile,
+            'project_count': active_count,
+            'completed_count': completed_count,
+            'total_count': total_count,
+            'completion_rate': round(completed_count / total_count * 100) if total_count else 0,
+            'latest_update': latest_plan_dates.get(profile.user_id) or profile.user.date_joined.date(),
+        })
+
+    type_order = {'phd': 0, 'master': 1, 'undergraduate': 2, 'graduated': 3}
+    if sort == 'plans':
+        member_cards.sort(key=lambda item: (item['project_count'], item['completed_count'], item['profile'].user_id), reverse=True)
+    elif sort == 'updated':
+        member_cards.sort(key=lambda item: (item['latest_update'], item['profile'].user_id), reverse=True)
+    else:
+        member_cards.sort(key=lambda item: (
+            type_order.get(item['profile'].member_type, 9),
+            int(item['profile'].grade) if str(item['profile'].grade).isdigit() else 9,
+            item['profile'].user.first_name or item['profile'].user.username
+        ))
     
     context = {
+        'all_members': all_members,
+        'member_cards': member_cards,
         'phd_members': phd_members,
         'master_members': master_members,
+        'undergraduate_members': undergraduate_members,
+        'graduated_members': graduated_members,
         'master_grade1': master_grade1,
         'master_grade2': master_grade2,
         'master_grade3': master_grade3,
+        'active_project_total': sum(active_plan_counts.values()),
+        'member_type_filter': member_type_filter,
+        'query': query,
+        'sort': sort,
+        'view': view,
     }
     return render(request, 'lab_management/member_list.html', context)
 
@@ -203,35 +290,69 @@ def plan_list(request):
     import calendar as cal
     
     view = request.GET.get('view', 'list')
+    if view not in {'list', 'calendar', 'board'}:
+        view = 'list'
+    requested_member = request.GET.get('member', '')
+    selected_user = requested_member
+    member_query = request.GET.get('member_q', '').strip()
+    plan_query = request.GET.get('q', '').strip()
+    status_filter = request.GET.get('status', 'all')
+    if status_filter not in {'all', 'in_progress', 'completed', 'delayed'}:
+        status_filter = 'all'
+    today_date = timezone.localdate()
     
     # 显示所有人公开的计划
-    main_plans = DailyPlan.objects.select_related('user').filter(parent__isnull=True, is_public=True).prefetch_related('sub_plans')
-    all_plans = DailyPlan.objects.select_related('user').filter(is_public=True)
+    main_plans = DailyPlan.objects.select_related('user', 'user__profile').filter(parent__isnull=True, is_public=True).prefetch_related('sub_plans')
+    all_plans = DailyPlan.objects.select_related('user', 'user__profile').filter(is_public=True)
+    if requested_member:
+        main_plans = main_plans.filter(user__username=selected_user)
+        all_plans = all_plans.filter(user__username=selected_user)
+    if plan_query:
+        main_plans = main_plans.filter(
+            models.Q(content__icontains=plan_query) |
+            models.Q(user__username__icontains=plan_query) |
+            models.Q(user__first_name__icontains=plan_query) |
+            models.Q(user__profile__research_topic__icontains=plan_query)
+        )
+        all_plans = all_plans.filter(
+            models.Q(content__icontains=plan_query) |
+            models.Q(user__username__icontains=plan_query) |
+            models.Q(user__first_name__icontains=plan_query) |
+            models.Q(user__profile__research_topic__icontains=plan_query)
+        )
+    if status_filter == 'completed':
+        main_plans = main_plans.filter(is_completed=True)
+        all_plans = all_plans.filter(is_completed=True)
+    elif status_filter == 'in_progress':
+        main_plans = main_plans.filter(is_completed=False, date__gte=today_date)
+        all_plans = all_plans.filter(is_completed=False, date__gte=today_date)
+    elif status_filter == 'delayed':
+        main_plans = main_plans.filter(is_completed=False, date__lt=today_date)
+        all_plans = all_plans.filter(is_completed=False, date__lt=today_date)
     
     # 获取所有成员
     members = UserProfile.objects.select_related('user').filter(user__is_superuser=False).all()
+    visible_members = members
+    if member_query:
+        visible_members = visible_members.filter(
+            models.Q(user__first_name__icontains=member_query) |
+            models.Q(user__username__icontains=member_query) |
+            models.Q(research_topic__icontains=member_query)
+        )
+    all_public_main_plans = DailyPlan.objects.select_related('user').filter(parent__isnull=True, is_public=True, user__is_superuser=False).prefetch_related('sub_plans')
     
     # 为每个成员构建计划数据（包括没有计划的成员）
     members_with_plans = []
-    for member in members:
+    for member in visible_members:
         user_plans = [p for p in main_plans if p.user_id == member.user_id]
+        user_all_plans = [p for p in all_public_main_plans if p.user_id == member.user_id]
         
-        # 统计主计划完成情况
-        main_completed = len([p for p in user_plans if p.is_completed])
-        main_total = len(user_plans)
+        # 侧栏统计按该成员所有公开主计划计算；右侧内容按当前筛选显示。
+        main_completed = len([p for p in user_all_plans if p.is_completed])
+        main_total = len(user_all_plans)
         
-        # 统计子计划完成情况（只统计公开的子计划）
-        sub_completed = 0
-        sub_total = 0
-        for plan in user_plans:
-            for sub in plan.sub_plans.filter(is_public=True):
-                sub_total += 1
-                if sub.is_completed:
-                    sub_completed += 1
-        
-        # 总计（主计划 + 子计划）
-        total_completed = main_completed + sub_completed
-        total_count = main_total + sub_total
+        total_completed = main_completed
+        total_count = main_total
         completion_rate = round(total_completed / total_count * 100, 1) if total_count > 0 else 0
         
         members_with_plans.append({
@@ -239,14 +360,66 @@ def plan_list(request):
             'plans': user_plans,
             'plan_count': total_count,
             'completed_count': total_completed,
+            'in_progress_count': max(total_count - total_completed, 0),
             'completion_rate': completion_rate
         })
+    total_plan_count = main_plans.count()
+    total_completed_count = main_plans.filter(is_completed=True).count()
+    delayed_plan_count = main_plans.filter(is_completed=False, date__lt=today_date).count()
+    total_in_progress_count = main_plans.filter(is_completed=False, date__gte=today_date).count()
+    avg_completion_rate = round(total_completed_count / total_plan_count * 100, 0) if total_plan_count > 0 else 0
+    selected_member_data = None
+    if requested_member:
+        selected_member_data = next((item for item in members_with_plans if item['profile'].user.username == selected_user), None)
+    if selected_member_data is None and request.user.is_authenticated:
+        selected_member_data = next((item for item in members_with_plans if item['profile'].user_id == request.user.id), None)
+    if selected_member_data is None:
+        selected_member_data = next((item for item in members_with_plans if item['plan_count'] > 0), None)
+    if selected_member_data is None and members_with_plans:
+        selected_member_data = members_with_plans[0]
+    if selected_member_data is not None and not selected_user:
+        selected_user = selected_member_data['profile'].user.username
+
+    for plan in main_plans:
+        sub_plans = list(plan.sub_plans.filter(is_public=True))
+        sub_total = len(sub_plans)
+        sub_completed = len([sub for sub in sub_plans if sub.is_completed])
+        plan.progress_rate = 100 if plan.is_completed else (round(sub_completed / sub_total * 100) if sub_total else 0)
+        plan.sub_completed_count = sub_completed
+        plan.visible_sub_plans = sub_plans
+        if plan.is_completed:
+            plan.ui_status = '已完成'
+            plan.ui_status_key = 'completed'
+        elif plan.date < today_date:
+            plan.ui_status = '延期'
+            plan.ui_status_key = 'delayed'
+        else:
+            plan.ui_status = '进行中'
+            plan.ui_status_key = 'in_progress'
+
+    board_columns = [
+        {'key': 'in_progress', 'title': '进行中', 'plans': [p for p in main_plans if getattr(p, 'ui_status_key', '') == 'in_progress']},
+        {'key': 'completed', 'title': '已完成', 'plans': [p for p in main_plans if getattr(p, 'ui_status_key', '') == 'completed']},
+        {'key': 'delayed', 'title': '延期', 'plans': [p for p in main_plans if getattr(p, 'ui_status_key', '') == 'delayed']},
+    ]
     
     context = {
         'plans': main_plans,
         'all_plans': all_plans,
         'members_with_plans': members_with_plans,
-        'view': view
+        'selected_member_data': selected_member_data,
+        'total_plan_count': total_plan_count,
+        'total_completed_count': total_completed_count,
+        'total_in_progress_count': total_in_progress_count,
+        'avg_completion_rate': avg_completion_rate,
+        'delayed_plan_count': delayed_plan_count,
+        'view': view,
+        'selected_user': selected_user,
+        'requested_member': requested_member,
+        'member_query': member_query,
+        'plan_query': plan_query,
+        'status_filter': status_filter,
+        'board_columns': board_columns,
     }
     
     if view == 'calendar':
@@ -309,64 +482,99 @@ def plan_list(request):
 
 def team_overview(request):
     members = UserProfile.objects.select_related('user').filter(user__is_superuser=False).all()
+    today = timezone.localdate()
+    period_start = today.replace(day=1)
     # 只查询公开的计划
     all_plans = DailyPlan.objects.select_related('user__profile').filter(user__is_superuser=False, parent__isnull=True, is_public=True).prefetch_related('sub_plans').order_by('-date')
     all_achievements = Achievement.objects.filter(is_public=True, user__is_superuser=False).select_related('user__profile').all()
+    public_documents = Document.objects.filter(is_public=True, user__is_superuser=False).select_related('user')
     
     member_data = []
     members_with_plans = []
+    total_completed_all = 0
+    total_count_all = 0
     
     for profile in members:
         user_plans = list(all_plans.filter(user=profile.user))
         
-        # 统计主计划完成情况（只统计公开的）
+        # 团队总览只统计主计划，子计划作为计划详情，不重复计入总数。
         main_completed = len([p for p in user_plans if p.is_completed])
         main_total = len(user_plans)
+
+        total_completed = main_completed
+        total_count = main_total
+        in_progress_count = max(total_count - total_completed, 0)
+        total_completed_all += total_completed
+        total_count_all += total_count
         
-        # 统计子计划完成情况（只统计公开的子计划）
-        sub_completed = 0
-        sub_total = 0
-        for plan in user_plans:
-            for sub in plan.sub_plans.filter(is_public=True):
-                sub_total += 1
-                if sub.is_completed:
-                    sub_completed += 1
-        
-        # 总计（主计划 + 子计划）
-        total_completed = main_completed + sub_completed
-        total_count = main_total + sub_total
-        
-        user_documents = Document.objects.filter(user=profile.user, is_public=True)
+        user_documents = public_documents.filter(user=profile.user)
         user_achievements = all_achievements.filter(user=profile.user)
+        update_dates = [p.date for p in user_plans if p.date]
+        update_dates += [doc.uploaded_at.date() for doc in user_documents if doc.uploaded_at]
+        update_dates += [(ach.date or ach.created_at.date()) for ach in user_achievements if ach.date or ach.created_at]
+        latest_update = max(update_dates) if update_dates else profile.user.date_joined.date()
         
         completion_rate = round(total_completed / total_count * 100, 0) if total_count > 0 else 0
         
-        # 用于成员表格（只显示前5个）
         member_data.append({
             'user': profile.user,
             'profile': profile,
             'plans': user_plans[:5],
             'completed_count': total_completed,
+            'in_progress_count': in_progress_count,
             'total_count': total_count,
             'documents': user_documents,
             'achievements': user_achievements,
             'completion_rate': completion_rate,
+            'latest_update': latest_update,
         })
         
-        # 用于团队计划展示（显示所有公开计划）
         members_with_plans.append({
             'profile': profile,
             'plans': user_plans,
             'plan_count': total_count,
             'completed_count': total_completed,
-            'completion_rate': completion_rate
+            'in_progress_count': in_progress_count,
+            'completion_rate': completion_rate,
+            'latest_update': latest_update,
         })
+
+    member_data.sort(key=lambda item: (item['latest_update'], item['completion_rate'], item['total_count']), reverse=True)
+    current_year_achievements = all_achievements.filter(
+        models.Q(date__year=today.year) |
+        models.Q(date__isnull=True, created_at__year=today.year)
+    )
+    achievement_counts = {
+        'paper': current_year_achievements.filter(achievement_type='paper').count(),
+        'patent': current_year_achievements.filter(achievement_type='patent').count(),
+        'project': current_year_achievements.filter(achievement_type='project').count(),
+        'award': current_year_achievements.filter(achievement_type='award').count(),
+    }
+    member_type_counts = {
+        'phd': members.filter(member_type='phd').count(),
+        'master': members.filter(member_type='master').count(),
+        'undergraduate': members.filter(member_type='undergraduate').count(),
+        'graduated': members.filter(member_type='graduated').count(),
+    }
+    monthly_document_count = public_documents.filter(uploaded_at__date__gte=period_start, uploaded_at__date__lte=today).count()
+    avg_completion_rate = round(total_completed_all / total_count_all * 100, 0) if total_count_all > 0 else 0
+    weekday_names = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日']
     
     context = {
         'member_data': member_data,
         'members_with_plans': members_with_plans,
         'all_plans': all_plans[:20],
         'all_achievements': all_achievements[:30],
+        'total_plan_count': total_count_all,
+        'total_completed_count': total_completed_all,
+        'avg_completion_rate': avg_completion_rate,
+        'monthly_document_count': monthly_document_count,
+        'achievement_counts': achievement_counts,
+        'member_type_counts': member_type_counts,
+        'current_date': today,
+        'current_weekday': weekday_names[today.weekday()],
+        'period_start': period_start,
+        'period_end': today,
     }
     return render(request, 'lab_management/team_overview.html', context)
 
@@ -403,19 +611,205 @@ def user_profile(request, username):
 
 
 def document_list(request):
-    documents = Document.objects.select_related('user').filter(is_public=True)
-    context = {'documents': documents}
+    from datetime import timedelta
+    from django.core.paginator import Paginator
+    query = request.GET.get('q', '').strip()
+    doc_type = request.GET.get('type', 'all')
+    uploader = request.GET.get('uploader', 'all')
+    scope = request.GET.get('scope', 'all')
+    category = request.GET.get('category', 'all')
+    sort = request.GET.get('sort', 'latest')
+    view = request.GET.get('view', 'list')
+    valid_types = {'all', 'pdf', 'word', 'excel', 'ppt', 'txt', 'zip', 'image', 'data', 'code', 'other'}
+    valid_scopes = {'all', 'public', 'private'}
+    valid_categories = {'all', 'project', 'paper', 'experiment', 'learning', 'meeting'}
+    valid_sorts = {'latest', 'downloads', 'name'}
+    if doc_type not in valid_types:
+        doc_type = 'all'
+    if scope not in valid_scopes:
+        scope = 'all'
+    if category not in valid_categories:
+        category = 'all'
+    if sort not in valid_sorts:
+        sort = 'latest'
+    if view not in {'list', 'grid'}:
+        view = 'list'
+
+    base_documents = Document.objects.select_related('user', 'user__profile')
+    if request.user.is_authenticated:
+        if not request.user.is_superuser:
+            base_documents = base_documents.filter(models.Q(is_public=True) | models.Q(user=request.user))
+    else:
+        base_documents = base_documents.filter(is_public=True)
+
+    documents = base_documents
+    if query:
+        documents = documents.filter(
+            models.Q(title__icontains=query) |
+            models.Q(description__icontains=query) |
+            models.Q(user__username__icontains=query) |
+            models.Q(user__first_name__icontains=query)
+        )
+    if category != 'all':
+        documents = documents.filter(category=category)
+    if uploader != 'all':
+        documents = documents.filter(user__username=uploader)
+    if scope == 'public':
+        documents = documents.filter(is_public=True)
+    elif scope == 'private':
+        documents = documents.filter(is_public=False)
+    if doc_type != 'all':
+        if doc_type in {'pdf', 'word', 'excel', 'txt', 'other'}:
+            documents = documents.filter(document_type=doc_type)
+        else:
+            ext_map = {
+                'ppt': ['.ppt', '.pptx'],
+                'zip': ['.zip', '.rar', '.7z'],
+                'image': ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp'],
+                'data': ['.csv', '.json'],
+                'code': ['.py', '.js', '.html', '.css', '.java', '.cpp', '.c'],
+            }
+            q_obj = models.Q()
+            for ext in ext_map.get(doc_type, []):
+                q_obj |= models.Q(file__iendswith=ext)
+            documents = documents.filter(q_obj)
+
+    if sort == 'downloads':
+        documents = documents.order_by('-download_count', '-uploaded_at')
+    elif sort == 'name':
+        documents = documents.order_by('title', '-uploaded_at')
+    else:
+        documents = documents.order_by('-uploaded_at')
+
+    recent_since = timezone.now() - timedelta(days=7)
+    document_count = base_documents.count()
+    public_document_count = base_documents.filter(is_public=True).count()
+    recent_upload_count = base_documents.filter(uploaded_at__gte=recent_since).count()
+    total_download_count = base_documents.aggregate(total=models.Sum('download_count'))['total'] or 0
+    storage_bytes = 0
+    for doc in base_documents:
+        try:
+            if doc.file:
+                storage_bytes += doc.file.size
+        except Exception:
+            pass
+    storage_limit_bytes = 100 * 1024 * 1024 * 1024
+    storage_used_gb = round(storage_bytes / (1024 * 1024 * 1024), 2)
+    storage_percent = round(storage_bytes / storage_limit_bytes * 100, 1) if storage_limit_bytes else 0
+    uploader_options = User.objects.filter(documents__in=base_documents).distinct().order_by('first_name', 'username')
+    paginator = Paginator(documents, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    for doc in page_obj.object_list:
+        ext = doc.get_file_ext()
+        if ext in ['.ppt', '.pptx']:
+            doc.ui_type = 'PPT'
+            doc.ui_icon = 'ppt.png'
+        elif ext in ['.zip', '.rar', '.7z']:
+            doc.ui_type = '压缩包'
+            doc.ui_icon = 'zip.png'
+        elif ext in ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp']:
+            doc.ui_type = '图片'
+            doc.ui_icon = 'image.png'
+        elif ext in ['.csv', '.json']:
+            doc.ui_type = '数据'
+            doc.ui_icon = 'data.png'
+        elif ext in ['.py', '.js', '.html', '.css', '.java', '.cpp', '.c']:
+            doc.ui_type = '代码'
+            doc.ui_icon = 'code.svg'
+        elif doc.is_pdf():
+            doc.ui_type = 'PDF'
+            doc.ui_icon = 'pdf.png'
+        elif doc.is_word():
+            doc.ui_type = 'Word'
+            doc.ui_icon = 'word.png'
+        elif doc.is_excel():
+            doc.ui_type = 'Excel'
+            doc.ui_icon = 'excel.png'
+        elif doc.is_txt():
+            doc.ui_type = '文本'
+            doc.ui_icon = 'txt.png'
+        else:
+            doc.ui_type = doc.get_document_type_display()
+            doc.ui_icon = 'folder.svg'
+
+    context = {
+        'documents': page_obj.object_list,
+        'page_obj': page_obj,
+        'paginator': paginator,
+        'document_count': document_count,
+        'filtered_count': paginator.count,
+        'recent_upload_count': recent_upload_count,
+        'public_document_count': public_document_count,
+        'public_ratio': round(public_document_count / document_count * 100, 1) if document_count else 0,
+        'total_download_count': total_download_count,
+        'storage_used_gb': storage_used_gb,
+        'storage_percent': storage_percent,
+        'uploader_options': uploader_options,
+        'query': query,
+        'doc_type': doc_type,
+        'uploader': uploader,
+        'scope': scope,
+        'category': category,
+        'sort': sort,
+        'view': view,
+    }
     return render(request, 'lab_management/document_list.html', context)
 
 
 def announcement_list(request):
-    announcements = Announcement.objects.select_related('author').all()
+    category = request.GET.get('category', 'all')
+    query = request.GET.get('q', '').strip()
+    page_size = request.GET.get('page_size', '10')
+    if category not in {'all', 'system', 'academic', 'team', 'important'}:
+        category = 'all'
+    if page_size not in {'5', '10', '20'}:
+        page_size = '10'
+
+    base_announcements = Announcement.objects.select_related('author').annotate(
+        comment_count=models.Count('comments')
+    ).order_by('-is_pinned', '-created_at', '-id')
+    announcements = base_announcements
+    if category != 'all':
+        announcements = announcements.filter(category=category)
+    if query:
+        announcements = announcements.filter(
+            models.Q(title__icontains=query) |
+            models.Q(content__icontains=query) |
+            models.Q(author__username__icontains=query) |
+            models.Q(author__first_name__icontains=query)
+        )
+
+    paginator = Paginator(announcements, int(page_size))
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    category_ui = {
+        'system': ('系统公告', 'system', 'megaphone'),
+        'academic': ('学术通知', 'academic', 'cap'),
+        'team': ('团队动态', 'team', 'users'),
+        'important': ('重要通知', 'important', 'file'),
+    }
+    for announcement in page_obj.object_list:
+        announcement.comments_list = announcement.comments.select_related('author')[:10]
+        label, tone, icon = category_ui.get(announcement.category, category_ui['system'])
+        announcement.ui_category = label
+        announcement.ui_tone = tone
+        announcement.ui_icon = icon
     
-    # 为每个公告加载评论
-    for announcement in announcements:
-        announcement.comments_list = announcement.comments.all()[:10]
-    
-    context = {'announcements': announcements}
+    context = {
+        'announcements': page_obj.object_list,
+        'page_obj': page_obj,
+        'paginator': paginator,
+        'announcement_total': announcements.count(),
+        'all_count': base_announcements.count(),
+        'system_count': base_announcements.filter(category='system').count(),
+        'academic_count': base_announcements.filter(category='academic').count(),
+        'team_count': base_announcements.filter(category='team').count(),
+        'important_count': base_announcements.filter(category='important').count(),
+        'category': category,
+        'query': query,
+        'page_size': page_size,
+    }
     return render(request, 'lab_management/announcement_list.html', context)
 
 
@@ -458,26 +852,58 @@ def delete_announcement_comment(request, comment_id):
 @login_required
 def my_page(request):
     user = request.user
+    active_tab = request.GET.get('tab', 'profile')
+    valid_tabs = {'profile', 'plans', 'documents', 'achievements', 'management'}
+    if active_tab not in valid_tabs:
+        active_tab = 'profile'
     try:
         profile = user.profile
     except UserProfile.DoesNotExist:
         UserProfile.objects.create(user=user, research_topic='待填写')
         profile = user.profile
+    if active_tab == 'management' and not (user.is_superuser or profile.can_post_announcement):
+        active_tab = 'profile'
     
-    documents = Document.objects.filter(user=user)
-    plans = DailyPlan.objects.filter(user=user, parent__isnull=True).prefetch_related('sub_plans')
-    achievements = Achievement.objects.filter(user=user)
+    documents = Document.objects.filter(user=user).order_by('-uploaded_at')
+    plans = DailyPlan.objects.filter(user=user, parent__isnull=True).prefetch_related('sub_plans').order_by('-date', '-id')
+    achievements = Achievement.objects.filter(user=user).order_by('-date', '-created_at')
     received_messages = Message.objects.select_related('sender__profile').filter(receiver=user).order_by('-created_at')[:20]
+    recent_announcements = Announcement.objects.select_related('author').annotate(
+        comment_count=models.Count('comments')
+    ).order_by('-is_pinned', '-created_at')[:4]
+    completed_plans_count = plans.filter(is_completed=True).count()
+    in_progress_plans_count = plans.filter(is_completed=False).count()
+    public_documents_count = documents.filter(is_public=True).count()
+    private_documents_count = documents.filter(is_public=False).count()
+    public_achievements_count = achievements.filter(is_public=True).count()
+    unread_message_count = Message.objects.filter(receiver=user, is_read=False).count()
+
+    for plan in plans:
+        sub_plans = list(plan.sub_plans.all())
+        sub_total = len(sub_plans)
+        sub_completed = len([sub for sub in sub_plans if sub.is_completed])
+        plan.workspace_progress = 100 if plan.is_completed else (round(sub_completed / sub_total * 100) if sub_total else 0)
+        plan.workspace_sub_completed = sub_completed
+        plan.workspace_sub_total = sub_total
+        plan.workspace_status = '已完成' if plan.is_completed else ('已延期' if plan.date and plan.date < timezone.localdate() else '进行中')
     
     # 标记收到的消息为已读
     Message.objects.filter(receiver=user, is_read=False).update(is_read=True)
     
     context = {
+        'active_tab': active_tab,
         'profile': profile,
         'documents': documents,
         'plans': plans,
         'achievements': achievements,
         'received_messages': received_messages,
+        'recent_announcements': recent_announcements,
+        'completed_plans_count': completed_plans_count,
+        'in_progress_plans_count': in_progress_plans_count,
+        'public_documents_count': public_documents_count,
+        'private_documents_count': private_documents_count,
+        'public_achievements_count': public_achievements_count,
+        'unread_message_count': unread_message_count,
     }
     return render(request, 'lab_management/my_page.html', context)
 
@@ -485,13 +911,14 @@ def my_page(request):
 @login_required
 def add_document(request):
     if request.method == 'POST':
+        next_url = request.POST.get('next') or 'my_page'
         title = request.POST.get('title')
         description = request.POST.get('description')
         file = request.FILES.get('file')
         
         if not file:
             messages.error(request, '请选择要上传的文件')
-            return redirect('my_page')
+            return redirect(next_url)
         
         ext = file.name.split('.')[-1].lower()
         doc_type = 'other'
@@ -505,18 +932,23 @@ def add_document(request):
             doc_type = 'txt'
         
         is_public = request.POST.get('is_public') == 'on'
+        category = request.POST.get('category', 'project')
+        valid_categories = {choice[0] for choice in Document.CATEGORY_CHOICES}
+        if category not in valid_categories:
+            category = 'project'
         
         Document.objects.create(
             user=request.user,
             title=title,
             file=file,
             document_type=doc_type,
+            category=category,
             description=description,
             is_public=is_public
         )
         
         messages.success(request, '文档上传成功！')
-        return redirect('my_page')
+        return redirect(next_url)
     
     return redirect('my_page')
 
@@ -536,6 +968,7 @@ def download_document(request, doc_id):
         if not doc.file or not os.path.exists(doc.file.path):
             messages.error(request, '文件不存在或已被删除')
             return redirect('document_list')
+        Document.objects.filter(id=doc.id).update(download_count=models.F('download_count') + 1)
         
         # 读取文件
         with open(doc.file.path, 'rb') as f:
@@ -693,13 +1126,14 @@ def delete_document(request, doc_id):
 @login_required
 def add_plan(request):
     if request.method == 'POST':
+        next_url = request.POST.get('next') or 'my_page'
         content = request.POST.get('content')
         date = request.POST.get('date')
         parent_id = request.POST.get('parent_id')
         
         if not content:
             messages.error(request, '请填写计划内容')
-            return redirect('my_page')
+            return redirect(next_url)
         
         # 如果有 parent_id，则是添加子计划
         parent_plan = None
@@ -722,7 +1156,7 @@ def add_plan(request):
             return redirect('plan_list')
         
         messages.success(request, '计划添加成功！')
-        return redirect('my_page')
+        return redirect(next_url)
     
     return redirect('my_page')
 
@@ -816,25 +1250,30 @@ def add_sub_plan_ajax(request):
 @login_required
 def add_announcement(request):
     if request.method == 'POST':
+        next_url = request.POST.get('next') or 'announcement_list'
         title = request.POST.get('title')
         content = request.POST.get('content')
+        category = request.POST.get('category', 'system')
+        if category not in {'system', 'academic', 'team', 'important'}:
+            category = 'system'
         is_pinned = request.user.is_superuser and request.POST.get('is_pinned') == 'on'
-        comments_enabled = request.POST.get('comments_enabled') == 'on' if request.user.is_superuser else True
+        comments_enabled = request.POST.get('comments_enabled') == 'on'
         
         if not title or not content:
             messages.error(request, '请填写标题和内容')
-            return redirect('my_page')
+            return redirect(next_url)
         
         Announcement.objects.create(
             author=request.user,
             title=title,
             content=content,
+            category=category,
             is_pinned=is_pinned,
             comments_enabled=comments_enabled
         )
         
         messages.success(request, '公告发布成功！')
-        return redirect('announcement_list')
+        return redirect(next_url)
     
     return redirect('my_page')
 
@@ -850,7 +1289,11 @@ def edit_announcement(request, ann_id):
     if request.method == 'POST':
         announcement.title = request.POST.get('title')
         announcement.content = request.POST.get('content')
-        announcement.is_pinned = request.user.is_superuser and request.POST.get('is_pinned') == 'on'
+        category = request.POST.get('category', announcement.category)
+        if category in {'system', 'academic', 'team', 'important'}:
+            announcement.category = category
+        if request.user.is_superuser:
+            announcement.is_pinned = request.POST.get('is_pinned') == 'on'
         if request.user.is_superuser or request.user == announcement.author:
             announcement.comments_enabled = request.POST.get('comments_enabled') == 'on'
         announcement.save()
@@ -875,6 +1318,7 @@ def delete_announcement(request, ann_id):
 @login_required
 def edit_profile(request):
     if request.method == 'POST':
+        next_url = request.POST.get('next') or 'my_page'
         profile = request.user.profile
         profile.research_topic = request.POST.get('research_topic', '')
         profile.bio = request.POST.get('bio', '')
@@ -883,8 +1327,12 @@ def edit_profile(request):
         profile.phone = request.POST.get('phone', '')
         
         # 更新成员分类信息
-        profile.member_type = request.POST.get('member_type', 'master')
-        profile.grade = request.POST.get('grade', '1')
+        member_type = request.POST.get('member_type', 'master')
+        grade = request.POST.get('grade', '1')
+        valid_member_types = {choice[0] for choice in UserProfile.MEMBER_TYPE_CHOICES}
+        valid_grades = {choice[0] for choice in UserProfile.GRADE_CHOICES}
+        profile.member_type = member_type if member_type in valid_member_types else 'master'
+        profile.grade = grade if grade in valid_grades else '1'
         
         # 处理头像上传
         if request.FILES.get('avatar'):
@@ -897,7 +1345,7 @@ def edit_profile(request):
         user.save()
         
         messages.success(request, '资料更新成功！')
-        return redirect('my_page')
+        return redirect(next_url)
     
     return redirect('my_page')
 
@@ -905,12 +1353,16 @@ def edit_profile(request):
 @login_required
 def add_achievement(request):
     if request.method == 'POST':
+        next_url = request.POST.get('next') or 'my_page'
         title = request.POST.get('title')
         achievement_type = request.POST.get('achievement_type')
-        description = request.POST.get('description')
-        link = request.POST.get('link')
+        description = request.POST.get('description', '')
+        link = request.POST.get('link', '')
         date = request.POST.get('date')
         is_public = request.POST.get('is_public', 'on') == 'on'
+        if not title:
+            messages.error(request, '请填写成果名称')
+            return redirect(next_url)
         
         achievement = Achievement.objects.create(
             user=request.user,
@@ -927,7 +1379,7 @@ def add_achievement(request):
             achievement.save()
         
         messages.success(request, '成果添加成功！')
-        return redirect('my_page')
+        return redirect(next_url)
     
     return redirect('my_page')
 
@@ -1739,85 +2191,204 @@ def export_data(request):
 def resume_builder(request):
     """简历生成器"""
     from .forms import ResumeBasicsForm, EducationForm, WorkExperienceForm, SkillForm, ProjectForm
+
+    def collect_resume_data(post):
+        resume_data = {
+            'resume_type': post.get('resume_type', 'academic'),
+            'language': post.get('language', 'zh'),
+            'basics': {
+                'name': post.get('name', ''),
+                'gender': post.get('gender', ''),
+                'birth_date': post.get('birth_date', ''),
+                'headline': post.get('headline', ''),
+                'unit': post.get('unit', ''),
+                'email': post.get('email', ''),
+                'phone': post.get('phone', ''),
+                'location': post.get('location', ''),
+                'summary': post.get('summary', ''),
+                'photo': post.get('photo_data', ''),
+            },
+            'education': [],
+            'work': [],
+            'skills': [],
+            'projects': [],
+        }
+
+        for i in range(int(post.get('education_count', 0) or 0)):
+            prefix = f'education_{i}'
+            item = {
+                'institution': post.get(f'{prefix}_institution', ''),
+                'degree': post.get(f'{prefix}_degree', ''),
+                'area': post.get(f'{prefix}_area', ''),
+                'start_date': post.get(f'{prefix}_start_date', ''),
+                'end_date': post.get(f'{prefix}_end_date', ''),
+                'description': post.get(f'{prefix}_description', ''),
+            }
+            if any(item.values()):
+                resume_data['education'].append(item)
+
+        for i in range(int(post.get('work_count', 0) or 0)):
+            prefix = f'work_{i}'
+            item = {
+                'company': post.get(f'{prefix}_company', ''),
+                'position': post.get(f'{prefix}_position', ''),
+                'start_date': post.get(f'{prefix}_start_date', ''),
+                'end_date': post.get(f'{prefix}_end_date', ''),
+                'description': post.get(f'{prefix}_description', ''),
+            }
+            if any(item.values()):
+                resume_data['work'].append(item)
+
+        for i in range(int(post.get('skill_count', 0) or 0)):
+            prefix = f'skill_{i}'
+            item = {
+                'category': post.get(f'{prefix}_category', ''),
+                'skills': post.get(f'{prefix}_skills', ''),
+            }
+            if any(item.values()):
+                resume_data['skills'].append(item)
+
+        for i in range(int(post.get('project_count', 0) or 0)):
+            prefix = f'project_{i}'
+            item = {
+                'name': post.get(f'{prefix}_name', ''),
+                'description': post.get(f'{prefix}_description', ''),
+                'link': post.get(f'{prefix}_link', ''),
+            }
+            if any(item.values()):
+                resume_data['projects'].append(item)
+        return resume_data
+
+    resume_en_dictionary = {
+        '您的姓名': 'Your Name',
+        '陈韩宇': 'Chen Hanyu',
+        '任千一': 'Ren Qianyi',
+        '苏洁': 'Su Jie',
+        '张博杭': 'Zhang Bohang',
+        '邵荣恒': 'Shao Rongheng',
+        '博士研究生': 'Ph.D. Candidate',
+        '硕士研究生': 'Master Student',
+        '本科生': 'Undergraduate Student',
+        '已毕业': 'Alumni',
+        '负责人': 'Principal Investigator',
+        '男': 'Male',
+        '女': 'Female',
+        'XX大学 实验室': 'XX University Laboratory',
+        'XX大学': 'XX University',
+        '实验室': 'Laboratory',
+        '北京市 海淀区': 'Haidian District, Beijing',
+        '城市，省份': 'City, Province',
+        '至今': 'Present',
+        '高中': 'High School',
+        '专科': 'Associate Degree',
+        '本科': "Bachelor's Degree",
+        '硕士': "Master's Degree",
+        '博士': 'Ph.D.',
+        '计算机科学与技术': 'Computer Science and Technology',
+        '软件工程': 'Software Engineering',
+        '机器学习': 'Machine Learning',
+        '深度学习': 'Deep Learning',
+        '生物信息学': 'Bioinformatics',
+        '图神经网络': 'Graph Neural Networks',
+        '表示学习': 'Representation Learning',
+        '个人简介': 'Profile',
+        '教育经历': 'Education',
+        '工作经历': 'Experience',
+        '项目经历': 'Projects',
+        '科研成果': 'Research Output',
+        '技能证书': 'Skills and Certificates',
+        '技能': 'Skills',
+        '证书': 'Certificates',
+        '编程语言': 'Programming Languages',
+        '工具框架': 'Tools and Frameworks',
+        '工具': 'Tools',
+        '框架': 'Frameworks',
+        '主修课程': 'Major courses',
+        '成就': 'Achievements',
+        '工作职责': 'Responsibilities',
+        '项目概述': 'Project overview',
+        '技术栈': 'Technology stack',
+        '您的贡献': 'Contributions',
+        '负责': 'Responsible for',
+        '参与': 'Participated in',
+        '开发': 'Developed',
+        '研究': 'Research',
+        '系统': 'System',
+        '平台': 'Platform',
+        '算法': 'Algorithm',
+        '数据分析': 'Data Analysis',
+        '可视化': 'Visualization',
+        '论文': 'Paper',
+        '专利': 'Patent',
+        '第一作者': 'First Author',
+        '通讯作者': 'Corresponding Author',
+        '这个人很懒什么也没有留下。': 'No profile summary has been provided.',
+    }
+
+    def resume_translate(text, language):
+        if not text or language != 'en':
+            return text or ''
+        translated = str(text)
+        for key in sorted(resume_en_dictionary, key=len, reverse=True):
+            translated = translated.replace(key, resume_en_dictionary[key])
+        return (
+            translated
+            .replace('，', ', ')
+            .replace('。', '. ')
+            .replace('；', '; ')
+            .replace('：', ': ')
+            .replace('、', ', ')
+            .replace('（', '(')
+            .replace('）', ')')
+            .replace('  ', ' ')
+            .strip()
+        )
+
+    profile = getattr(request.user, 'profile', None)
+    default_resume_data = {
+        'resume_type': 'academic',
+        'language': 'zh',
+        'basics': {
+            'name': request.user.first_name or request.user.username,
+            'gender': '',
+            'birth_date': '',
+            'headline': profile.get_member_type_display() if profile else '',
+            'unit': 'XX大学 实验室',
+            'email': (profile.email if profile else '') or request.user.email,
+            'phone': profile.phone if profile else '',
+            'location': '',
+            'summary': profile.bio if profile else '',
+            'photo': '',
+        },
+        'education': [],
+        'work': [],
+        'skills': [],
+        'projects': [],
+    }
     
     if request.method == 'POST':
         action = request.POST.get('action', 'save')
+
+        if action == 'save_draft':
+            resume_data = collect_resume_data(request.POST)
+            ResumeDraft.objects.update_or_create(
+                user=request.user,
+                defaults={'data': resume_data}
+            )
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'updated_at': timezone.now().strftime('%Y-%m-%d %H:%M')})
+            messages.success(request, '简历草稿已保存')
+            return redirect('resume_builder')
         
         if action == 'generate_pdf':
             # 收集表单数据
-            resume_data = {
-                'basics': {
-                    'name': request.POST.get('name', ''),
-                    'headline': request.POST.get('headline', ''),
-                    'email': request.POST.get('email', ''),
-                    'phone': request.POST.get('phone', ''),
-                    'location': request.POST.get('location', ''),
-                    'summary': request.POST.get('summary', ''),
-                    'photo': request.POST.get('photo_data', ''),  # 获取照片数据
-                },
-                'education': [],
-                'work': [],
-                'skills': [],
-                'projects': [],
-            }
+            resume_data = collect_resume_data(request.POST)
             
             # 调试信息
             print(f"收到照片数据：{'有' if resume_data['basics']['photo'] else '无'}")
             if resume_data['basics']['photo']:
                 print(f"照片数据长度：{len(resume_data['basics']['photo'])}")
                 print(f"照片数据前缀：{resume_data['basics']['photo'][:50]}...")
-            
-            # 处理教育经历
-            edu_count = int(request.POST.get('education_count', 0))
-            for i in range(edu_count):
-                prefix = f'education_{i}'
-                edu = {
-                    'institution': request.POST.get(f'{prefix}_institution', ''),
-                    'degree': request.POST.get(f'{prefix}_degree', ''),
-                    'area': request.POST.get(f'{prefix}_area', ''),
-                    'start_date': request.POST.get(f'{prefix}_start_date', ''),
-                    'end_date': request.POST.get(f'{prefix}_end_date', ''),
-                    'description': request.POST.get(f'{prefix}_description', ''),
-                }
-                if edu['institution']:
-                    resume_data['education'].append(edu)
-            
-            # 处理工作经历
-            work_count = int(request.POST.get('work_count', 0))
-            for i in range(work_count):
-                prefix = f'work_{i}'
-                work = {
-                    'company': request.POST.get(f'{prefix}_company', ''),
-                    'position': request.POST.get(f'{prefix}_position', ''),
-                    'start_date': request.POST.get(f'{prefix}_start_date', ''),
-                    'end_date': request.POST.get(f'{prefix}_end_date', ''),
-                    'description': request.POST.get(f'{prefix}_description', ''),
-                }
-                if work['company']:
-                    resume_data['work'].append(work)
-            
-            # 处理技能
-            skill_count = int(request.POST.get('skill_count', 0))
-            for i in range(skill_count):
-                prefix = f'skill_{i}'
-                skill = {
-                    'category': request.POST.get(f'{prefix}_category', ''),
-                    'skills': request.POST.get(f'{prefix}_skills', ''),
-                }
-                if skill['category']:
-                    resume_data['skills'].append(skill)
-            
-            # 处理项目
-            project_count = int(request.POST.get('project_count', 0))
-            for i in range(project_count):
-                prefix = f'project_{i}'
-                project = {
-                    'name': request.POST.get(f'{prefix}_name', ''),
-                    'description': request.POST.get(f'{prefix}_description', ''),
-                    'link': request.POST.get(f'{prefix}_link', ''),
-                }
-                if project['name']:
-                    resume_data['projects'].append(project)
             
             # 生成 PDF - 与前端预览布局完全一致
             try:
@@ -1995,15 +2566,32 @@ def resume_builder(request):
                 
                 # ===== 构建 PDF 内容 =====
                 basics = resume_data['basics']
+                is_english_resume = resume_data.get('language') == 'en'
+                section_labels = {
+                    'summary': 'Profile' if is_english_resume else '个人简介',
+                    'education': 'Education' if is_english_resume else '教育经历',
+                    'work': 'Experience' if is_english_resume else '工作经历',
+                    'skills': 'Skills' if is_english_resume else '技能',
+                    'projects': 'Projects' if is_english_resume else '项目经历',
+                    'present': 'Present' if is_english_resume else '至今',
+                    'filename_suffix': 'Resume' if is_english_resume else '简历',
+                }
+                tr = lambda value: resume_translate(value, resume_data.get('language', 'zh'))
                 
                 # 先构建联系信息列表（无论是否有照片都需要）
                 contact_parts = []
+                if basics.get('gender'):
+                    contact_parts.append(tr(basics['gender']))
+                if basics.get('unit'):
+                    contact_parts.append(tr(basics['unit']))
                 if basics['email']:
                     contact_parts.append(basics['email'])
                 if basics['phone']:
                     contact_parts.append(basics['phone'])
                 if basics['location']:
-                    contact_parts.append(basics['location'])
+                    contact_parts.append(tr(basics['location']))
+                if basics.get('birth_date'):
+                    contact_parts.append(basics['birth_date'])
                 contact_text = " | ".join(contact_parts) if contact_parts else ""
                 
                 # 处理照片（如果有）
@@ -2043,9 +2631,9 @@ def resume_builder(request):
                     # 创建左侧信息文本（将多个段落合并为一个）
                     left_text = ""
                     if basics['name']:
-                        left_text += f"<font size='26' color='#0f172a'><b>{basics['name']}</b></font><br/>"
+                        left_text += f"<font size='26' color='#0f172a'><b>{tr(basics['name'])}</b></font><br/>"
                     if basics['headline']:
-                        left_text += f"<font size='14' color='#64748b'>{basics['headline']}</font><br/>"
+                        left_text += f"<font size='14' color='#64748b'>{tr(basics['headline'])}</font><br/>"
                     if contact_text:
                         left_text += f"<font size='10' color='#64748b'>{contact_text}</font>"
                     
@@ -2080,11 +2668,11 @@ def resume_builder(request):
                     # 没有照片，正常布局
                     # 姓名
                     if basics['name']:
-                        elements.append(Paragraph(basics['name'], title_style))
+                        elements.append(Paragraph(tr(basics['name']), title_style))
                     
                     # 职位/头衔
                     if basics['headline']:
-                        elements.append(Paragraph(basics['headline'], headline_style))
+                        elements.append(Paragraph(tr(basics['headline']), headline_style))
                     
                     # 联系信息 - 与预览一致使用 | 分隔
                     if contact_parts:
@@ -2102,13 +2690,13 @@ def resume_builder(request):
                 
                 # 个人简介 - 对应预览中的"个人简介"章节
                 if basics['summary']:
-                    elements.append(Paragraph("个人简介", section_title_style))
+                    elements.append(Paragraph(section_labels['summary'], section_title_style))
                     add_section_divider()
-                    elements.append(Paragraph(basics['summary'], body_style))
+                    elements.append(Paragraph(tr(basics['summary']), body_style))
                 
                 # 教育经历
                 if resume_data['education']:
-                    elements.append(Paragraph("教育经历", section_title_style))
+                    elements.append(Paragraph(section_labels['education'], section_title_style))
                     add_section_divider()
                     
                     for edu in resume_data['education']:
@@ -2117,22 +2705,22 @@ def resume_builder(request):
                         if edu['start_date'] and edu['end_date']:
                             date_str = f"{edu['start_date']} - {edu['end_date']}"
                         elif edu['start_date']:
-                            date_str = f"{edu['start_date']} - 至今"
+                            date_str = f"{edu['start_date']} - {section_labels['present']}"
                         
-                        add_entry_header(edu['institution'], date_str)
+                        add_entry_header(tr(edu['institution']), date_str)
                         
                         # 副标题: 学位 - 专业
-                        subtitle = f"{edu['degree']} - {edu['area']}"
+                        subtitle = f"{tr(edu['degree'])} - {tr(edu['area'])}"
                         elements.append(Paragraph(f'<i>{subtitle}</i>', entry_subtitle_style))
                         
                         if edu['description']:
-                            elements.append(Paragraph(edu['description'], body_style))
+                            elements.append(Paragraph(tr(edu['description']), body_style))
                         
                         elements.append(Spacer(1, 6))
                 
                 # 工作经历
                 if resume_data['work']:
-                    elements.append(Paragraph("工作经历", section_title_style))
+                    elements.append(Paragraph(section_labels['work'], section_title_style))
                     add_section_divider()
                     
                     for work in resume_data['work']:
@@ -2140,40 +2728,40 @@ def resume_builder(request):
                         if work['start_date'] and work['end_date']:
                             date_str = f"{work['start_date']} - {work['end_date']}"
                         elif work['start_date']:
-                            date_str = f"{work['start_date']} - 至今"
+                            date_str = f"{work['start_date']} - {section_labels['present']}"
                         
-                        add_entry_header(work['company'], date_str)
-                        elements.append(Paragraph(f"<i>{work['position']}</i>", entry_subtitle_style))
+                        add_entry_header(tr(work['company']), date_str)
+                        elements.append(Paragraph(f"<i>{tr(work['position'])}</i>", entry_subtitle_style))
                         
                         if work['description']:
-                            elements.append(Paragraph(work['description'], body_style))
+                            elements.append(Paragraph(tr(work['description']), body_style))
                         
                         elements.append(Spacer(1, 6))
                 
                 # 技能
                 if resume_data['skills']:
-                    elements.append(Paragraph("技能", section_title_style))
+                    elements.append(Paragraph(section_labels['skills'], section_title_style))
                     add_section_divider()
                     
                     for skill in resume_data['skills']:
-                        skill_text = f"<b>{skill['category']}:</b> {skill['skills']}"
+                        skill_text = f"<b>{tr(skill['category'])}:</b> {tr(skill['skills'])}"
                         elements.append(Paragraph(skill_text, body_style))
                         elements.append(Spacer(1, 3))
                 
                 # 项目经历
                 if resume_data['projects']:
-                    elements.append(Paragraph("项目经历", section_title_style))
+                    elements.append(Paragraph(section_labels['projects'], section_title_style))
                     add_section_divider()
                     
                     for project in resume_data['projects']:
-                        project_title = project['name']
+                        project_title = tr(project['name'])
                         if project['link']:
                             project_title += f" ({project['link']})"
                         
                         elements.append(Paragraph(f'<b>{project_title}</b>', entry_title_style))
                         
                         if project['description']:
-                            elements.append(Paragraph(project['description'], body_style))
+                            elements.append(Paragraph(tr(project['description']), body_style))
                         
                         elements.append(Spacer(1, 6))
                 
@@ -2182,7 +2770,11 @@ def resume_builder(request):
                 buffer.seek(0)
                 
                 response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
-                filename = f"{basics['name'].replace(' ', '_')}_简历.pdf" if basics['name'] else "resume.pdf"
+                filename_name = tr(basics['name']).replace(' ', '_') if basics['name'] else 'resume'
+                filename_name = ''.join(ch for ch in filename_name if ch.isascii() and (ch.isalnum() or ch in {'_', '-'})).strip('_-')
+                if not filename_name:
+                    filename_name = 'resume'
+                filename = f"{filename_name}_{section_labels['filename_suffix']}.pdf"
                 response['Content-Disposition'] = f'attachment; filename="{filename}"'
                 # 禁用缓存以确保每次下载都是最新的
                 response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
@@ -2197,12 +2789,14 @@ def resume_builder(request):
                 
                 # 检查是否是 AJAX 请求
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    from django.http import JsonResponse
                     return JsonResponse({'error': error_msg}, status=500)
                 else:
                     messages.error(request, error_msg)
                     return redirect('resume_builder')
     
+    draft = ResumeDraft.objects.filter(user=request.user).first()
+    resume_initial = draft.data if draft and draft.data else default_resume_data
+
     # GET 请求，显示表单
     context = {
         'basics_form': ResumeBasicsForm(),
@@ -2210,6 +2804,9 @@ def resume_builder(request):
         'work_form': WorkExperienceForm(),
         'skill_form': SkillForm(),
         'project_form': ProjectForm(),
+        'resume_initial': resume_initial,
+        'resume_initial_json': json.dumps(resume_initial, ensure_ascii=False),
+        'resume_draft': draft,
     }
     return render(request, 'lab_management/resume_builder.html', context)
 

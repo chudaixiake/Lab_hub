@@ -19,8 +19,10 @@ def avatar_directory_path(instance, filename):
 class UserProfile(models.Model):
     # 成员类型选择
     MEMBER_TYPE_CHOICES = [
-        ('master', '硕士'),
-        ('phd', '博士'),
+        ('phd', '博士研究生'),
+        ('master', '硕士研究生'),
+        ('undergraduate', '本科生'),
+        ('graduated', '已毕业'),
     ]
     
     # 年级选择
@@ -47,10 +49,10 @@ class UserProfile(models.Model):
     # 成员分类字段
     member_type = models.CharField(
         "成员类型",
-        max_length=10,
+        max_length=20,
         choices=MEMBER_TYPE_CHOICES,
         default='master',
-        help_text="选择硕士或博士"
+        help_text="选择成员类型"
     )
     grade = models.CharField(
         "年级",
@@ -76,6 +78,13 @@ class Document(models.Model):
         ('excel', 'Excel'),
         ('other', '其他'),
     ]
+    CATEGORY_CHOICES = [
+        ('project', '项目文档'),
+        ('paper', '论文资料'),
+        ('experiment', '实验数据'),
+        ('learning', '学习资料'),
+        ('meeting', '会议资料'),
+    ]
     
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -86,9 +95,11 @@ class Document(models.Model):
     title = models.CharField("文档标题", max_length=200)
     file = models.FileField("文件", upload_to=user_directory_path)
     document_type = models.CharField("文档类型", max_length=20, choices=DOCUMENT_TYPES)
+    category = models.CharField("文档分类", max_length=20, choices=CATEGORY_CHOICES, default='project')
     description = models.TextField("描述", blank=True)
     is_public = models.BooleanField("公开", default=True, help_text="公开文档可被所有人查看，不公开仅自己可见")
     uploaded_at = models.DateTimeField("上传时间", auto_now_add=True)
+    download_count = models.PositiveIntegerField("下载次数", default=0)
     
     class Meta:
         verbose_name = "文档"
@@ -182,6 +193,13 @@ class DailyPlan(models.Model):
 
 
 class Announcement(models.Model):
+    CATEGORY_CHOICES = [
+        ('system', '系统公告'),
+        ('academic', '学术通知'),
+        ('team', '团队动态'),
+        ('important', '重要通知'),
+    ]
+
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -190,6 +208,7 @@ class Announcement(models.Model):
     )
     title = models.CharField("标题", max_length=200)
     content = models.TextField("内容")
+    category = models.CharField("公告类型", max_length=20, choices=CATEGORY_CHOICES, default='system')
     is_pinned = models.BooleanField("置顶", default=False)
     comments_enabled = models.BooleanField("开启评论", default=True, help_text="关闭后用户无法评论")
     created_at = models.DateTimeField("发布时间", auto_now_add=True)
@@ -285,3 +304,21 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender.username} → {self.receiver.username} | {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+
+
+class ResumeDraft(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="resume_draft",
+        verbose_name="用户",
+    )
+    data = models.JSONField("草稿数据", default=dict, blank=True)
+    updated_at = models.DateTimeField("更新时间", auto_now=True)
+
+    class Meta:
+        verbose_name = "简历草稿"
+        verbose_name_plural = "简历草稿"
+
+    def __str__(self):
+        return f"{self.user.username} resume draft"

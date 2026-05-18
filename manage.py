@@ -32,3 +32,4 @@ if __name__ == '__main__':
     # git log 查看提交历史
     # python manage.py runserver 0.0.0.0:8000
     # python manage.py runserver 0.0.0.0:8000 --insecure
+    # python manage.py runserver localhost:8000

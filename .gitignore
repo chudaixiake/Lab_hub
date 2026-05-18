@@ -29,7 +29,6 @@ ENV/
 
 # Static & Media
 staticfiles/
-static/
 media/avatars/*/
 media/documents/*/
 !media/avatars/.gitkeep

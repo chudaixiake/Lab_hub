@@ -1,763 +1,294 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}工作计划{% endblock %}
+{% block title %}工作计划 · LabHub{% endblock %}
 
 {% block content %}
-<style>
-    .plan-page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        margin-bottom: 28px;
-        flex-wrap: wrap;
-        gap: 16px;
-    }
-    .view-toggle {
-        display: flex;
-        background: var(--color-surface);
-        border: 1px solid var(--color-border-light);
-        border-radius: var(--radius-sm);
-        overflow: hidden;
-        box-shadow: var(--shadow-sm);
-    }
-    .view-toggle a {
-        padding: 9px 20px;
-        font-size: 0.88rem;
-        font-weight: 600;
-        text-decoration: none;
-        color: var(--color-text-secondary);
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        border-right: 1px solid var(--color-border-light);
-    }
-    .view-toggle a:last-child { border-right: none; }
-    .view-toggle a:hover { color: var(--color-text-primary); background: var(--color-surface-hover); }
-    .view-toggle a.active {
-        background: var(--color-accent);
-        color: white;
-    }
+<div class="plans-page">
+    <section class="plans-title-row">
+        <div>
+            <h1>工作计划</h1>
+            <p>团队成员的每日工作安排与阶段任务管理</p>
+        </div>
+        <div class="plans-actions">
+            <a href="{% url 'my_page' %}#plans" class="plan-primary-action">⊕ 新建计划</a>
+            <details class="plans-filter-menu">
+                <summary>▽ 筛选</summary>
+                <form method="get" action="{% url 'plan_list' %}">
+                    <input type="hidden" name="view" value="{{ view }}">
+                    {% if requested_member %}<input type="hidden" name="member" value="{{ requested_member }}">{% endif %}
+                    <label>关键词<input name="q" value="{{ plan_query }}" placeholder="计划、成员或研究方向"></label>
+                    <label>状态
+                        <select name="status">
+                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>全部状态</option>
+                            <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>进行中</option>
+                            <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>已完成</option>
+                            <option value="delayed" {% if status_filter == 'delayed' %}selected{% endif %}>延期</option>
+                        </select>
+                    </label>
+                    <button type="submit">应用筛选</button>
+                    <a href="{% url 'plan_list' %}?view={{ view }}">重置</a>
+                </form>
+            </details>
+            <a href="{% url 'export_data' %}?type=plans">⇩ 导出计划</a>
+            <div class="plan-view-switch">
+                <a href="?view=calendar{% if requested_member %}&member={{ requested_member|urlencode }}{% endif %}&q={{ plan_query|urlencode }}&status={{ status_filter }}" class="{% if view == 'calendar' %}active{% endif %}">日历</a>
+                <a href="?view=list{% if requested_member %}&member={{ requested_member|urlencode }}{% endif %}&q={{ plan_query|urlencode }}&status={{ status_filter }}" class="{% if view == 'list' %}active{% endif %}">列表</a>
+                <a href="?view=board{% if requested_member %}&member={{ requested_member|urlencode }}{% endif %}&q={{ plan_query|urlencode }}&status={{ status_filter }}" class="{% if view == 'board' %}active{% endif %}">看板</a>
+            </div>
+        </div>
+    </section>
 
-    /* Team Member Plans Styles */
-    .team-plans-container {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-    }
-    .member-plans-card {
-        background: var(--color-surface);
-        border-radius: var(--radius-lg);
-        border: 1px solid var(--color-border-light);
-        box-shadow: var(--shadow-sm);
-        overflow: hidden;
-        transition: all 0.25s ease;
-    }
-    .member-plans-card:hover {
-        box-shadow: var(--shadow-md);
-        border-color: rgba(99,102,241,0.15);
-    }
-    .member-plans-header {
-        padding: 20px 24px;
-        background: linear-gradient(135deg, rgba(99,102,241,0.04), rgba(139,92,246,0.04));
-        border-bottom: 1px solid var(--color-border-light);
-        display: flex;
-        align-items: center;
-        gap: 16px;
-    }
-    .member-plans-avatar {
-        width: 52px; height: 52px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 3px solid var(--color-border-light);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        flex-shrink: 0;
-    }
-    .member-plans-avatar-ph {
-        width: 52px; height: 52px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 700;
-        font-size: 1.2rem;
-        border: 3px solid var(--color-border-light);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        flex-shrink: 0;
-    }
-    .member-plans-info {
-        flex: 1;
-        min-width: 0;
-    }
-    .member-plans-name {
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: var(--color-text-primary);
-        margin-bottom: 4px;
-    }
-    .member-plans-topic {
-        font-size: 0.85rem;
-        color: var(--color-text-secondary);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .member-plans-stats {
-        display: flex;
-        gap: 20px;
-        flex-shrink: 0;
-    }
-    .member-stat {
-        text-align: center;
-    }
-    .member-stat-value {
-        font-size: 1.4rem;
-        font-weight: 800;
-        color: var(--color-accent);
-    }
-    .member-stat-label {
-        font-size: 0.75rem;
-        color: var(--color-text-tertiary);
-    }
-    .member-plans-body {
-        padding: 20px 24px;
-    }
-    .plan-detail-item {
-        display: flex;
-        gap: 16px;
-        padding: 16px 0;
-        border-bottom: 1px solid var(--color-border-light);
-    }
-    .plan-detail-item:last-child {
-        border-bottom: none;
-        padding-bottom: 0;
-    }
-    .plan-detail-item:first-child {
-        padding-top: 0;
-    }
-    .plan-detail-status {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1rem;
-        flex-shrink: 0;
-    }
-    .plan-detail-status.pending {
-        background: var(--color-accent-light);
-        color: var(--color-accent);
-    }
-    .plan-detail-status.completed {
-        background: var(--color-success-light);
-        color: var(--color-success);
-    }
-    .plan-detail-content {
-        flex: 1;
-        min-width: 0;
-    }
-    .plan-detail-header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 8px;
-        flex-wrap: wrap;
-    }
-    .plan-detail-date {
-        font-size: 0.85rem;
-        color: var(--color-text-tertiary);
-        background: var(--color-bg);
-        padding: 3px 10px;
-        border-radius: 12px;
-    }
-    .plan-detail-text {
-        font-size: 0.95rem;
-        color: var(--color-text-primary);
-        line-height: 1.6;
-        margin-bottom: 10px;
-    }
-    .plan-detail-text.completed {
-        text-decoration: line-through;
-        color: var(--color-text-tertiary);
-    }
-    .sub-plans-list {
-        margin-left: 8px;
-        padding-left: 16px;
-        border-left: 2px solid var(--color-accent-light);
-    }
-    .sub-plan-detail {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 0;
-        font-size: 0.88rem;
-    }
-    .sub-plan-detail:not(:last-child) {
-        border-bottom: 1px dashed var(--color-border-light);
-    }
-    .sub-plan-icon {
-        color: var(--color-accent);
-        font-size: 0.8rem;
-    }
-    .sub-plan-text {
-        flex: 1;
-        color: var(--color-text-secondary);
-    }
-    .sub-plan-text.completed {
-        text-decoration: line-through;
-        color: var(--color-text-tertiary);
-    }
-    .sub-plan-status {
-        font-size: 0.8rem;
-    }
-    .member-plans-empty {
-        padding: 32px;
-        text-align: center;
-        color: var(--color-text-tertiary);
-    }
-    .member-plans-progress {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-top: 8px;
-    }
-    .member-progress-bar {
-        flex: 1;
-        height: 6px;
-        background: var(--color-bg-alt);
-        border-radius: 3px;
-        overflow: hidden;
-    }
-    .member-progress-fill {
-        height: 100%;
-        border-radius: 3px;
-        transition: width 0.5s ease;
-    }
-    .member-progress-text {
-        font-size: 0.8rem;
-        font-weight: 600;
-        min-width: 40px;
-        text-align: right;
-    }
+    <section class="plans-stat-grid">
+        <div class="plan-stat-card">
+            <span class="plan-stat-icon blue">▣</span>
+            <span><em>总计划数</em><strong>{{ total_plan_count }}</strong><small>所有成员计划总数</small></span>
+        </div>
+        <div class="plan-stat-card">
+            <span class="plan-stat-icon green">▷</span>
+            <span><em>进行中</em><strong>{{ total_in_progress_count }}</strong><small>当前进行中的计划</small></span>
+        </div>
+        <div class="plan-stat-card">
+            <span class="plan-stat-icon cyan">✓</span>
+            <span><em>已完成</em><strong>{{ total_completed_count }}</strong><small>已完成的计划</small></span>
+        </div>
+        <div class="plan-stat-card">
+            <span class="plan-stat-icon orange">◷</span>
+            <span><em>延期</em><strong>{{ delayed_plan_count }}</strong><small>已延期的计划</small></span>
+        </div>
+        <div class="plan-stat-card">
+            <span class="plan-stat-icon purple">◔</span>
+            <span><em>平均完成率</em><strong>{{ avg_completion_rate|floatformat:0 }}%</strong><small>团队平均完成进度</small></span>
+        </div>
+    </section>
 
-    /* Calendar */
-    .cal-wrap {
-        background: var(--color-surface);
-        border-radius: var(--radius-lg);
-        border: 1px solid var(--color-border-light);
-        box-shadow: var(--shadow-sm);
-        overflow: hidden;
-    }
-    .cal-nav {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 18px 24px;
-        border-bottom: 1px solid var(--color-border-light);
-    }
-    .cal-nav h2 {
-        font-size: 1.15rem;
-        font-weight: 700;
-    }
-    .cal-grid {
-        display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        border-top: 1px solid var(--color-border-light);
-    }
-    .cal-day-header {
-        padding: 12px;
-        text-align: center;
-        font-weight: 700;
-        font-size: 0.78rem;
-        color: var(--color-text-tertiary);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        background: var(--color-bg);
-        border-bottom: 1px solid var(--color-border-light);
-        border-right: 1px solid var(--color-border-light);
-    }
-    .cal-day-header:nth-child(7n) { border-right: none; }
-    .cal-day {
-        min-height: 110px;
-        padding: 8px;
-        border-bottom: 1px solid var(--color-border-light);
-        border-right: 1px solid var(--color-border-light);
-        transition: background 0.15s ease;
-        position: relative;
-    }
-    .cal-day:nth-child(7n) { border-right: none; }
-    .cal-day:hover { background: rgba(99,102,241,0.02); }
-    .cal-day.today {
-        background: rgba(99,102,241,0.04);
-    }
-    .cal-day.today .day-num {
-        background: var(--color-accent);
-        color: white;
-        width: 26px; height: 26px;
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .day-num {
-        font-weight: 700;
-        font-size: 0.85rem;
-        color: var(--color-text-primary);
-        margin-bottom: 4px;
-        display: inline-block;
-    }
-    .day-plans { display: flex; flex-direction: column; gap: 3px; }
-    .day-plan {
-        font-size: 0.72rem;
-        padding: 3px 6px;
-        border-radius: 4px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        font-weight: 500;
-        background: rgba(99,102,241,0.08);
-        color: var(--color-accent);
-        cursor: default;
-    }
-    .day-plan.completed {
-        background: var(--color-success-light);
-        color: var(--color-success);
-    }
-    .day-more {
-        font-size: 0.7rem;
-        color: var(--color-text-tertiary);
-        text-align: center;
-        padding-top: 2px;
-    }
-
-    /* List view */
-    .plan-list-wrap {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-    .plan-list-item {
-        background: var(--color-surface);
-        border-radius: var(--radius-md);
-        padding: 20px 24px;
-        border: 1px solid var(--color-border-light);
-        box-shadow: var(--shadow-sm);
-        transition: all 0.25s ease;
-    }
-    .plan-list-item:hover {
-        border-color: rgba(99,102,241,0.2);
-        box-shadow: var(--shadow-md);
-        transform: translateX(4px);
-    }
-
-    @media (max-width: 768px) {
-        .cal-day { min-height: 70px; padding: 4px; }
-        .day-plan { font-size: 0.65rem; }
-        .day-num { font-size: 0.75rem; }
-    }
-</style>
-
-<div class="plan-page-header anim-fade-up">
-    <div>
-        <h1 class="page-title">工作计划</h1>
-        <p class="page-subtitle">团队成员的每日工作安排</p>
-    </div>
-    <div class="view-toggle">
-        <a href="?view=calendar" class="{% if view == 'calendar' or not view %}active{% endif %}"><span class="icon icon-calendar" style="vertical-align: middle; margin-right: 4px;"></span>日历</a>
-        <a href="?view=list" class="{% if view == 'list' %}active{% endif %}"><span class="icon icon-doc" style="vertical-align: middle; margin-right: 4px;"></span>列表</a>
-    </div>
-</div>
-
-{% if view == 'calendar' or not view %}
-<div class="cal-wrap anim-fade-up-1">
-    <div class="cal-nav">
-        <a href="?view=calendar&month={{ prev_month }}" class="btn btn-ghost btn-sm">◀ 上月</a>
-        <h2>{{ year }}年 {{ month }}月</h2>
-        <a href="?view=calendar&month={{ next_month }}" class="btn btn-ghost btn-sm">下月 ▶</a>
-    </div>
-    <div class="cal-grid">
-        <div class="cal-day-header">日</div>
-        <div class="cal-day-header">一</div>
-        <div class="cal-day-header">二</div>
-        <div class="cal-day-header">三</div>
-        <div class="cal-day-header">四</div>
-        <div class="cal-day-header">五</div>
-        <div class="cal-day-header">六</div>
-
-        {% for day in calendar_days %}
-        <div class="cal-day {% if day.is_today %}today{% endif %}">
-            <div class="day-num">{{ day.day }}</div>
-            {% if day.plans %}
-            <div class="day-plans">
-                {% for plan in day.plans|slice:":2" %}
-                <div class="day-plan {% if plan.is_completed %}completed{% endif %}" title="{{ plan.user.username }}: {{ plan.content }}">
-                    {% if plan.is_completed %}✓{% else %}•{% endif %} {{ plan.content|truncatechars:12 }}
+    {% if view == 'calendar' %}
+    <section class="plans-shell">
+        <div class="plan-main-card" style="grid-column:1/-1;">
+            <div class="calendar-lite-head">
+                <a href="?view=calendar&month={{ prev_month }}">‹ 上月</a>
+                <strong>{{ year }}年 {{ month }}月</strong>
+                <a href="?view=calendar&month={{ next_month }}">下月 ›</a>
+            </div>
+            <div class="calendar-lite-grid">
+                <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+                {% for day in calendar_days %}
+                <div class="{% if day.is_today %}today{% endif %}">
+                    <strong>{{ day.day }}</strong>
+                    {% for plan in day.plans|slice:":2" %}
+                    <em>{{ plan.content|truncatechars:10 }}</em>
+                    {% endfor %}
                 </div>
                 {% endfor %}
-                {% if day.plans|length > 2 %}
-                <div class="day-more">+{{ day.plans|length|add:"-2" }} 更多</div>
-                {% endif %}
             </div>
-            {% endif %}
         </div>
-        {% endfor %}
-    </div>
-</div>
-{% else %}
-<!-- Team Member Plans List View (Detailed) -->
-<div class="team-plans-container anim-fade-up-1">
-    {% if members_with_plans %}
-        {% for member_data in members_with_plans %}
-        <div class="member-plans-card">
-            <div class="member-plans-header">
-                {% if member_data.profile.avatar %}
-                <img src="{{ member_data.profile.avatar.url }}" alt="" class="member-plans-avatar">
-                {% else %}
-                <div class="member-plans-avatar-ph">{{ member_data.profile.user.username|first|upper }}</div>
-                {% endif %}
-                <div class="member-plans-info">
-                    <div class="member-plans-name">{{ member_data.profile.user.first_name|default:member_data.profile.user.username }}</div>
-                    <div class="member-plans-topic">{{ member_data.profile.research_topic|default:"暂无研究课题" }}</div>
-                    {% if member_data.completion_rate is not None %}
-                    <div class="member-plans-progress">
-                        <div class="member-progress-bar">
-                            <div class="member-progress-fill" style="width: {{ member_data.completion_rate }}%; background: {% if member_data.completion_rate >= 80 %}var(--color-success){% elif member_data.completion_rate >= 50 %}var(--color-warning){% else %}var(--color-danger){% endif %};"></div>
-                        </div>
-                        <span class="member-progress-text" style="color: {% if member_data.completion_rate >= 80 %}var(--color-success){% elif member_data.completion_rate >= 50 %}var(--color-warning){% else %}var(--color-danger){% endif %};">{{ member_data.completion_rate|floatformat:0 }}%</span>
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="member-plans-stats">
-                    <div class="member-stat">
-                        <div class="member-stat-value">{{ member_data.plan_count|default:"0" }}</div>
-                        <div class="member-stat-label">计划数</div>
-                    </div>
-                    <div class="member-stat">
-                        <div class="member-stat-value" style="color: var(--color-success);">{{ member_data.completed_count|default:"0" }}</div>
-                        <div class="member-stat-label">已完成</div>
-                    </div>
-                </div>
+    </section>
+    {% else %}
+    <section class="plans-shell">
+        <aside class="plan-member-sidebar">
+            <h2>成员列表</h2>
+            <form class="plan-member-search" method="get" action="{% url 'plan_list' %}">
+                <input type="hidden" name="view" value="{{ view }}">
+                <input type="hidden" name="q" value="{{ plan_query }}">
+                <input type="hidden" name="status" value="{{ status_filter }}">
+                <span>⌕</span>
+                <input type="search" name="member_q" value="{{ member_query }}" placeholder="搜索成员">
+                <button type="submit">↔</button>
+            </form>
+            <a class="plan-member-row all {% if not requested_member %}active{% endif %}" href="{% url 'plan_list' %}?view={{ view }}&q={{ plan_query|urlencode }}&status={{ status_filter }}">
+                <span class="plan-member-avatar">♙</span>
+                <strong>全部成员</strong>
+                <span>{{ total_plan_count }}<small>计划数</small></span>
+                <span>{{ total_completed_count }}<small>已完成</small></span>
+                <span>{{ avg_completion_rate|floatformat:0 }}%<small>完成率</small></span>
+            </a>
+            {% for item in members_with_plans %}
+            <a class="plan-member-row {% if requested_member == item.profile.user.username %}active{% endif %}" href="?view={{ view }}&member={{ item.profile.user.username }}&q={{ plan_query|urlencode }}&status={{ status_filter }}&member_q={{ member_query|urlencode }}">
+                {% if item.profile.avatar %}<img src="{{ item.profile.avatar.url }}" alt="">{% else %}<span class="plan-member-avatar">{{ item.profile.user.first_name|default:item.profile.user.username|first|upper }}</span>{% endif %}
+                <strong>{{ item.profile.user.first_name|default:item.profile.user.username }}</strong>
+                <em>{{ item.profile.research_topic|truncatechars:12|default:"研究方向" }}</em>
+                <span>{{ item.plan_count }}<small>计划数</small></span>
+                <span>{{ item.completed_count }}<small>已完成</small></span>
+                <span>{{ item.completion_rate|floatformat:0 }}%<small>完成率</small></span>
+            </a>
+            {% endfor %}
+        </aside>
+
+        <main class="plan-main-card">
+            {% if view == 'board' %}
+            <div class="plan-board">
+                {% for column in board_columns %}
+                <section class="plan-board-column {{ column.key }}">
+                    <h2>{{ column.title }} <span>{{ column.plans|length }}</span></h2>
+                    {% for plan in column.plans %}
+                    <article class="plan-board-card">
+                        <strong>{{ plan.content|truncatechars:30 }}</strong>
+                        <p>{{ plan.user.first_name|default:plan.user.username }} · {{ plan.date|date:"Y-m-d" }}</p>
+                        <div class="plan-board-progress"><span style="width:{{ plan.progress_rate }}%;"></span></div>
+                        <footer>
+                            <span>{{ plan.progress_rate }}%</span>
+                            <a href="?view=list&member={{ plan.user.username }}&q={{ plan_query|urlencode }}&status={{ status_filter }}">详情</a>
+                        </footer>
+                    </article>
+                    {% empty %}
+                    <div class="empty-state compact"><img src="{% static 'assets/empty-states/empty-tasks.png' %}" alt="">暂无计划</div>
+                    {% endfor %}
+                </section>
+                {% endfor %}
             </div>
-            <div class="member-plans-body">
-                {% if member_data.plans %}
-                    {% for plan in member_data.plans %}
-                    <div class="plan-detail-item" data-plan-id="{{ plan.id }}">
-                        <div class="plan-detail-status {% if plan.is_completed %}completed{% else %}pending{% endif %}">
-                            {% if plan.is_completed %}✓{% else %}○{% endif %}
+            {% elif selected_member_data %}
+            <div class="selected-member-summary">
+                {% if selected_member_data.profile.avatar %}<img src="{{ selected_member_data.profile.avatar.url }}" alt="">{% else %}<span class="selected-avatar">{{ selected_member_data.profile.user.first_name|default:selected_member_data.profile.user.username|first|upper }}</span>{% endif %}
+                <div class="selected-info">
+                    <h2>{{ selected_member_data.profile.user.first_name|default:selected_member_data.profile.user.username }}</h2>
+                    <p>{{ selected_member_data.profile.get_member_type_display }} · {{ selected_member_data.profile.research_topic|default:"研究方向待填写" }}</p>
+                </div>
+                {% if request.user.is_authenticated and request.user.id == selected_member_data.profile.user_id %}
+                <span class="my-plan-badge">我的计划</span>
+                <span class="current-user-badge">当前登录用户</span>
+                {% endif %}
+                <div class="selected-stats">
+                    <div><em>计划数</em><strong>{{ selected_member_data.plan_count }}</strong></div>
+                    <div><em>已完成</em><strong class="green">{{ selected_member_data.completed_count }}</strong></div>
+                    <div><em>进行中</em><strong class="blue">{{ selected_member_data.in_progress_count }}</strong></div>
+                    <div><em>完成率</em><strong class="orange">{{ selected_member_data.completion_rate|floatformat:0 }}%</strong></div>
+                </div>
+                <div class="selected-progress"><span style="width:{{ selected_member_data.completion_rate }}%;"></span></div>
+                <strong class="selected-progress-text">{{ selected_member_data.completion_rate|floatformat:0 }}%</strong>
+            </div>
+            <div class="plan-tip">ⓘ 点击左侧成员可预览计划；仅可修改自己的计划</div>
+
+            <div class="plan-detail-list">
+                {% for plan in selected_member_data.plans %}
+                <article class="plan-detail-card" data-plan-id="{{ plan.id }}">
+                    <div class="plan-detail-top">
+                        <span class="plan-main-icon">▤</span>
+                        <div style="min-width:0;flex:1;">
+                            <h3>{{ plan.content|truncatechars:28 }}</h3>
+                            <div class="plan-tags">
+                                <span>▣ {{ plan.date|date:"Y年n月d日" }}</span>
+                                <span class="green">{{ plan.date_range }}</span>
+                                <span class="blue">{{ plan.visible_sub_plans|length }} 个子计划</span>
+                                <span class="blue">{{ plan.ui_status }}</span>
+                            </div>
                         </div>
-                        <div class="plan-detail-content">
-                            <div class="plan-detail-header">
-                                <span class="plan-detail-date">{{ plan.date }}</span>
-                                <span class="plan-date-range" data-plan-id="{{ plan.id }}" data-end-date="{{ plan.end_date }}" style="font-size: 0.78rem; color: var(--color-success); background: var(--color-success-light); padding: 2px 10px; border-radius: 10px;">
-                                    {{ plan.date_range }}
-                                </span>
-                                {% if plan.sub_plans.all %}
-                                <span class="sub-plan-count" data-plan-id="{{ plan.id }}" style="font-size: 0.78rem; color: var(--color-accent); background: var(--color-accent-light); padding: 2px 10px; border-radius: 10px;">{{ plan.sub_plans.all|length }} 个子计划</span>
-                                {% else %}
-                                <span class="sub-plan-count" data-plan-id="{{ plan.id }}" style="display: none; font-size: 0.78rem; color: var(--color-accent); background: var(--color-accent-light); padding: 2px 10px; border-radius: 10px;">0 个子计划</span>
-                                {% endif %}
-                                <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}" style="font-size: 0.8rem;">
-                                    {% if plan.is_completed %}已完成{% else %}进行中{% endif %}
-                                </span>
-                            </div>
-                            <div class="plan-detail-text {% if plan.is_completed %}completed{% endif %}">{{ plan.content }}</div>
-                            
-                            <div class="sub-plans-list" data-plan-id="{{ plan.id }}" {% if not plan.sub_plans.all %}style="display: none;"{% endif %}>
-                                {% for sub_plan in plan.sub_plans.all %}
-                                <div class="sub-plan-detail" data-sub-plan-id="{{ sub_plan.id }}">
-                                    <span class="sub-plan-icon">↳</span>
-                                    <span class="sub-plan-text {% if sub_plan.is_completed %}completed{% endif %}">{{ sub_plan.content }}</span>
-                                    <span class="sub-plan-status plan-status {% if sub_plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
-                                        {% if sub_plan.is_completed %}✓{% else %}○{% endif %}
-                                    </span>
-                                    {% if request.user == plan.user or request.user.is_superuser %}
-                                    <button onclick="togglePlan({{ sub_plan.id }})" style="padding: 2px 8px; font-size: 0.7rem; border: none; background: var(--color-accent-light); border-radius: 4px; cursor: pointer;">切换</button>
-                                    <a href="{% url 'edit_plan' sub_plan.id %}" class="btn btn-sm" style="padding: 2px 8px; font-size: 0.7rem;">编辑</a>
-                                    <a href="{% url 'delete_plan' sub_plan.id %}" class="btn btn-sm" style="padding: 2px 8px; font-size: 0.7rem; color: var(--color-danger);" onclick="return confirm('确定删除这个子计划？')">删除</a>
-                                    {% endif %}
-                                </div>
-                                {% endfor %}
-                            </div>
-                            
+                        <div class="plan-card-progress">
+                            <em>进度</em>
+                            <strong>{{ plan.progress_rate }}%</strong>
+                            <span><i style="width:{{ plan.progress_rate }}%;"></i></span>
+                        </div>
+                        <button class="collapse-btn" type="button">⌃</button>
+                    </div>
+                    <h4>子任务</h4>
+                    <div class="subtask-list" data-plan-id="{{ plan.id }}">
+                        {% for sub_plan in plan.visible_sub_plans %}
+                        <div class="subtask-row" data-sub-plan-id="{{ sub_plan.id }}">
+                            <span class="subtask-index">{{ forloop.counter }}</span>
+                            <span class="subtask-title {% if sub_plan.is_completed %}completed{% endif %}">{{ sub_plan.content }}</span>
+                            <span class="subtask-check {% if sub_plan.is_completed %}done{% endif %}">✓</span>
                             {% if request.user == plan.user or request.user.is_superuser %}
-                            <div style="margin-top: 12px; display: flex; gap: 8px;">
-                                <button onclick="togglePlan({{ plan.id }})" class="btn btn-sm" style="padding: 5px 14px; font-size: 0.8rem;">
-                                    {% if plan.is_completed %}标记未完成{% else %}标记完成{% endif %}
-                                </button>
-                                <button onclick="addSubPlan({{ plan.id }})" class="btn btn-sm" style="padding: 5px 14px; font-size: 0.8rem; background: var(--color-accent);">
-                                    + 添加子计划
-                                </button>
-                                <a href="{% url 'edit_plan' plan.id %}" class="btn btn-sm" style="padding: 5px 14px; font-size: 0.8rem;">编辑</a>
-                                <a href="{% url 'delete_plan' plan.id %}" class="btn btn-sm" style="padding: 5px 14px; font-size: 0.8rem; color: var(--color-danger);">删除</a>
-                            </div>
+                            <button onclick="togglePlan({{ sub_plan.id }})">切换</button>
+                            <a href="{% url 'edit_plan' sub_plan.id %}">编辑</a>
+                            <a class="danger" href="{% url 'delete_plan' sub_plan.id %}" onclick="return confirm('确定删除这个子计划？')">删除</a>
                             {% endif %}
                         </div>
+                        {% empty %}
+                        <div class="subtask-row empty">暂无子任务</div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="member-plans-empty">
-                        <span class="icon icon-doc" style="font-size: 2rem; opacity: 0.5;"></span>
-                        <p style="margin-top: 8px;">该成员还没有添加计划</p>
+                    {% if request.user == plan.user or request.user.is_superuser %}
+                    <div class="plan-card-actions">
+                        <button onclick="togglePlan({{ plan.id }})">✓ {% if plan.is_completed %}标记未完成{% else %}标记完成{% endif %}</button>
+                        <button class="primary" onclick="addSubPlan({{ plan.id }})">＋ 添加子计划</button>
+                        <a href="{% url 'edit_plan' plan.id %}">✎ 编辑计划</a>
+                        <a class="danger" href="{% url 'delete_plan' plan.id %}" onclick="return confirm('确定删除这个计划？')">▢ 删除计划</a>
                     </div>
-                {% endif %}
+                    {% endif %}
+                </article>
+                {% empty %}
+                <div class="empty-state"><img src="{% static 'assets/empty-states/empty-tasks.png' %}" alt="">该成员还没有添加计划</div>
+                {% endfor %}
             </div>
-        </div>
-        {% endfor %}
-    {% else %}
-    <div class="card">
-        <div class="empty-state">
-            <div class="empty-state-icon"><span class="icon icon-clipboard" style="width: 48px; height: 48px;"></span></div>
-            <p>暂无工作计划</p>
-            <a href="{% url 'my_page' %}" class="link" style="margin-top: 8px; display: inline-block;">去添加 →</a>
-        </div>
-    </div>
+            {% else %}
+            <div class="empty-state"><img src="{% static 'assets/empty-states/empty-tasks.png' %}" alt="">暂无工作计划</div>
+            {% endif %}
+        </main>
+    </section>
     {% endif %}
 </div>
-{% endif %}
 
-<!-- 添加子计划的弹窗 -->
-<div id="subPlanModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
-    <div style="background: white; padding: 24px; border-radius: 12px; max-width: 400px; width: 90%;">
-        <h3 style="margin-top: 0;">添加子计划</h3>
+<div id="subPlanModal" class="plan-modal">
+    <div class="plan-modal-card">
+        <h3>添加子计划</h3>
         <form id="subPlanForm">
             {% csrf_token %}
             <input type="hidden" name="parent_id" id="parentPlanId">
-            <div style="margin-bottom: 16px;">
-                <label style="display: block; margin-bottom: 6px; font-weight: 500;">子计划内容</label>
-                <textarea name="content" id="subPlanContent" required style="width: 100%; padding: 10px; border: 1px solid var(--color-border); border-radius: 8px; resize: vertical; min-height: 80px; font-family: inherit;" placeholder="输入子计划内容..."></textarea>
-            </div>
-            <div style="margin-bottom: 16px;">
-                <label style="display: block; margin-bottom: 6px; font-weight: 500;">日期</label>
-                <input type="date" name="date" id="subPlanDate" required style="width: 100%; padding: 10px; border: 1px solid var(--color-border); border-radius: 8px;">
-            </div>
-            <div id="subPlanError" style="display: none; color: var(--color-danger); font-size: 0.85rem; margin-bottom: 12px; padding: 8px; background: rgba(239,68,68,0.1); border-radius: 6px;"></div>
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                <button type="button" onclick="closeSubPlanModal()" style="padding: 8px 16px; border: none; background: var(--color-bg); border-radius: 8px; cursor: pointer;">取消</button>
-                <button type="submit" id="subPlanSubmitBtn" style="padding: 8px 16px; border: none; background: var(--color-accent); color: white; border-radius: 8px; cursor: pointer;">保存</button>
+            <label>子计划内容</label>
+            <textarea name="content" id="subPlanContent" required placeholder="输入子计划内容..."></textarea>
+            <label>日期</label>
+            <input type="date" name="date" id="subPlanDate" required>
+            <div id="subPlanError"></div>
+            <div class="plan-modal-actions">
+                <button type="button" onclick="closeSubPlanModal()">取消</button>
+                <button type="submit" id="subPlanSubmitBtn">保存</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-// 获取 CSRF Token
 function getCsrfToken() {
     var match = document.cookie.match(/csrftoken=([^;]+)/);
     return match ? match[1] : '';
 }
-
 function addSubPlan(planId) {
     document.getElementById('parentPlanId').value = planId;
     document.getElementById('subPlanModal').style.display = 'flex';
     document.getElementById('subPlanError').style.display = 'none';
-    
-    // 设置默认日期为今天
-    var today = new Date().toISOString().split('T')[0];
-    document.getElementById('subPlanDate').value = today;
+    document.getElementById('subPlanDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('subPlanContent').focus();
 }
-
 function closeSubPlanModal() {
     document.getElementById('subPlanModal').style.display = 'none';
     document.getElementById('subPlanContent').value = '';
-    document.getElementById('subPlanError').style.display = 'none';
 }
-
-// 关闭弹窗点击背景
 document.getElementById('subPlanModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeSubPlanModal();
-    }
+    if (e.target === this) closeSubPlanModal();
 });
-
-// AJAX 提交子计划表单
 document.getElementById('subPlanForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    
     var parentId = document.getElementById('parentPlanId').value;
     var content = document.getElementById('subPlanContent').value.trim();
     var date = document.getElementById('subPlanDate').value;
-    var submitBtn = document.getElementById('subPlanSubmitBtn');
     var errorDiv = document.getElementById('subPlanError');
-    
     if (!content) {
         errorDiv.textContent = '请填写子计划内容';
         errorDiv.style.display = 'block';
         return;
     }
-    
-    // 禁用提交按钮
-    submitBtn.disabled = true;
-    submitBtn.textContent = '保存中...';
-    errorDiv.style.display = 'none';
-    
-    // 发送 AJAX 请求
     fetch('/api/subplan/add/', {
         method: 'POST',
-        headers: {
-            'X-CSRFToken': getCsrfToken(),
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: 'parent_id=' + encodeURIComponent(parentId) + 
-              '&content=' + encodeURIComponent(content) + 
-              '&date=' + encodeURIComponent(date)
-    })
-    .then(response => response.json())
-    .then(data => {
-        submitBtn.disabled = false;
-        submitBtn.textContent = '保存';
-        
-        if (data.success) {
-            // 添加子计划到 DOM
-            addSubPlanToDOM(data.sub_plan);
-            // 更新主计划的时间跨度
-            updatePlanDateRange(data.sub_plan.parent_id, data.sub_plan.parent_date_range, data.sub_plan.parent_end_date);
-            // 关闭弹窗
-            closeSubPlanModal();
-        } else {
+        headers: {'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'parent_id=' + encodeURIComponent(parentId) + '&content=' + encodeURIComponent(content) + '&date=' + encodeURIComponent(date)
+    }).then(function(r){ return r.json(); }).then(function(data){
+        if (data.success) window.location.reload();
+        else {
             errorDiv.textContent = data.error || '添加失败，请重试';
             errorDiv.style.display = 'block';
         }
-    })
-    .catch(error => {
-        submitBtn.disabled = false;
-        submitBtn.textContent = '保存';
+    }).catch(function(){
         errorDiv.textContent = '网络错误，请重试';
         errorDiv.style.display = 'block';
-        console.error('Error:', error);
     });
 });
-
-// 动态添加子计划到 DOM
-function addSubPlanToDOM(subPlan) {
-    var subPlansContainer = document.querySelector('.sub-plans-list[data-plan-id="' + subPlan.parent_id + '"]');
-    if (!subPlansContainer) return;
-    
-    // 显示子计划容器
-    subPlansContainer.style.display = 'block';
-    
-    // 创建子计划元素
-    var subPlanDiv = document.createElement('div');
-    subPlanDiv.className = 'sub-plan-detail';
-    subPlanDiv.setAttribute('data-sub-plan-id', subPlan.id);
-    subPlanDiv.innerHTML = 
-        '<span class="sub-plan-icon">↳</span>' +
-        '<span class="sub-plan-text">' + escapeHtml(subPlan.content) + '</span>' +
-        '<span class="sub-plan-status plan-status status-pending">○</span>' +
-        '<button onclick="togglePlan(' + subPlan.id + ')" style="padding: 2px 8px; font-size: 0.7rem; border: none; background: var(--color-accent-light); border-radius: 4px; cursor: pointer;">切换</button>' +
-        '<a href="/edit/plan/' + subPlan.id + '/" class="btn btn-sm" style="padding: 2px 8px; font-size: 0.7rem;">编辑</a>' +
-        '<a href="/delete/plan/' + subPlan.id + '/" class="btn btn-sm" style="padding: 2px 8px; font-size: 0.7rem; color: var(--color-danger);" onclick="return confirm(\'确定删除这个子计划？\')">删除</a>';
-    
-    subPlansContainer.appendChild(subPlanDiv);
-    
-    // 更新子计划数量标签
-    updateSubPlanCount(subPlan.parent_id);
-}
-
-// 更新子计划数量
-function updateSubPlanCount(planId) {
-    var countSpan = document.querySelector('.sub-plan-count[data-plan-id="' + planId + '"]');
-    if (countSpan) {
-        var subPlansContainer = document.querySelector('.sub-plans-list[data-plan-id="' + planId + '"]');
-        var count = subPlansContainer ? subPlansContainer.querySelectorAll('.sub-plan-detail').length : 0;
-        countSpan.textContent = count + ' 个子计划';
-        countSpan.style.display = 'inline-block';
-    }
-}
-
-// 更新主计划时间跨度
-function updatePlanDateRange(planId, dateRange, endDate) {
-    var dateRangeSpan = document.querySelector('.plan-date-range[data-plan-id="' + planId + '"]');
-    if (dateRangeSpan) {
-        dateRangeSpan.textContent = dateRange;
-        dateRangeSpan.setAttribute('data-end-date', endDate || '');
-    }
-}
-
-// HTML 转义函数
-function escapeHtml(text) {
-    var div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 function togglePlan(planId) {
     fetch('/toggle/plan/' + planId + '/', {
         method: 'POST',
-        headers: {
-            'X-CSRFToken': getCsrfToken(),
-            'Content-Type': 'application/x-www-form-urlencoded',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // 先尝试更新子计划状态
-            var subPlanItem = document.querySelector('.sub-plan-detail[data-sub-plan-id="' + planId + '"]');
-            if (subPlanItem) {
-                var statusSpan = subPlanItem.querySelector('.sub-plan-status');
-                var contentSpan = subPlanItem.querySelector('.sub-plan-text');
-                if (statusSpan && contentSpan) {
-                    // 切换状态显示
-                    var isCompleted = statusSpan.textContent.trim() === '✓';
-                    if (isCompleted) {
-                        statusSpan.textContent = '○';
-                        statusSpan.className = 'sub-plan-status plan-status status-pending';
-                        contentSpan.classList.remove('completed');
-                    } else {
-                        statusSpan.textContent = '✓';
-                        statusSpan.className = 'sub-plan-status plan-status status-completed';
-                        contentSpan.classList.add('completed');
-                    }
-                }
-                return;
-            }
-            
-            // 如果不是子计划，则更新主计划状态
-            var planItem = document.querySelector('.plan-detail-item[data-plan-id="' + planId + '"]');
-            if (planItem) {
-                // 找到主计划的状态标签、图标和按钮
-                var planStatusIcon = planItem.querySelector('.plan-detail-status');
-                var planStatusSpan = planItem.querySelector('.plan-status');
-                var planTextDiv = planItem.querySelector('.plan-detail-text');
-                var toggleBtn = planItem.querySelector('button[onclick="togglePlan(' + planId + ')"]');
-                
-                if (planStatusSpan && toggleBtn) {
-                    var isPlanCompleted = planStatusSpan.classList.contains('status-completed');
-                    if (isPlanCompleted) {
-                        // 变为未完成
-                        planStatusSpan.className = 'plan-status status-pending';
-                        planStatusSpan.textContent = '进行中';
-                        toggleBtn.textContent = '标记完成';
-                        if (planTextDiv) planTextDiv.classList.remove('completed');
-                        if (planStatusIcon) {
-                            planStatusIcon.className = 'plan-detail-status pending';
-                            planStatusIcon.textContent = '○';
-                        }
-                    } else {
-                        // 变为已完成
-                        planStatusSpan.className = 'plan-status status-completed';
-                        planStatusSpan.textContent = '已完成';
-                        toggleBtn.textContent = '标记未完成';
-                        if (planTextDiv) planTextDiv.classList.add('completed');
-                        if (planStatusIcon) {
-                            planStatusIcon.className = 'plan-detail-status completed';
-                            planStatusIcon.textContent = '✓';
-                        }
-                    }
-                }
-            }
-        } else {
-            alert(data.error || '操作失败');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('网络错误，请重试');
-    });
+        headers: {'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/x-www-form-urlencoded'}
+    }).then(function(r){ return r.json(); }).then(function(data){
+        if (data.success) window.location.reload();
+        else alert(data.error || '操作失败');
+    }).catch(function(){ alert('网络错误，请重试'); });
 }
 </script>
 {% endblock %}

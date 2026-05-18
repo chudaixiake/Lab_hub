@@ -1,151 +1,190 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}文档中心{% endblock %}
+{% block title %}文档 · LabHub{% endblock %}
 
 {% block content %}
-<style>
-    .doc-hero {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        margin-bottom: 28px;
-        flex-wrap: wrap;
-        gap: 16px;
-    }
-    .doc-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-        gap: 16px;
-    }
-    .doc-card {
-        background: var(--color-surface);
-        border-radius: var(--radius-md);
-        border: 1px solid var(--color-border-light);
-        padding: 22px 24px;
-        box-shadow: var(--shadow-sm);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        display: flex;
-        gap: 16px;
-        align-items: flex-start;
-    }
-    .doc-card:hover {
-        border-color: rgba(99,102,241,0.2);
-        box-shadow: var(--shadow-md);
-        transform: translateY(-3px);
-    }
-    .doc-icon {
-        width: 48px; height: 48px;
-        border-radius: var(--radius-sm);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 22px;
-        flex-shrink: 0;
-    }
-    .doc-icon.pdf { background: rgba(239,68,68,0.1); }
-    .doc-icon.word { background: rgba(37,99,235,0.1); }
-    .doc-icon.excel { background: rgba(16,185,129,0.1); }
-    .doc-icon.ppt { background: rgba(245,158,11,0.1); }
-    .doc-icon.image { background: rgba(236,72,153,0.1); }
-    .doc-icon.default { background: rgba(100,116,139,0.1); }
-    .doc-info { flex: 1; min-width: 0; }
-    .doc-title {
-        font-weight: 700;
-        font-size: 0.95rem;
-        color: var(--color-text-primary);
-        margin-bottom: 4px;
-        display: -webkit-box;
-        -webkit-line-clamp: 1;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
-    .doc-desc {
-        font-size: 0.83rem;
-        color: var(--color-text-secondary);
-        margin-bottom: 10px;
-        line-height: 1.5;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
-    .doc-meta {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        font-size: 0.78rem;
-        color: var(--color-text-tertiary);
-        flex-wrap: wrap;
-    }
-    .doc-actions {
-        display: flex;
-        gap: 8px;
-        flex-shrink: 0;
-        align-self: center;
-    }
-
-    .doc-table-wrap {
-        background: var(--color-surface);
-        border-radius: var(--radius-lg);
-        border: 1px solid var(--color-border-light);
-        box-shadow: var(--shadow-sm);
-        overflow: hidden;
-    }
-
-    @media (max-width: 640px) {
-        .doc-grid { grid-template-columns: 1fr; }
-    }
-</style>
-
-<div class="doc-hero anim-fade-up">
-    <div>
-        <h1 class="page-title">文档中心</h1>
-        <p class="page-subtitle">团队共享的学习资料与文档</p>
-    </div>
-    {% if user.is_authenticated %}
-    <a href="{% url 'my_page' %}" class="btn btn-primary btn-sm">上传文档 →</a>
-    {% endif %}
-</div>
-
-{% if documents %}
-<div class="doc-grid anim-fade-up-1">
-    {% for doc in documents %}
-    <div class="doc-card">
-        <div class="doc-icon {% if doc.get_document_type_display == 'PDF' %}pdf{% elif doc.get_document_type_display == 'Word' %}word{% elif doc.get_document_type_display == 'Excel' %}excel{% elif doc.get_document_type_display == 'PPT' %}ppt{% elif doc.get_document_type_display == '图片' %}image{% else %}default{% endif %}">
-            {% if doc.get_document_type_display == 'PDF' %}<span class="icon icon-doc" style="color: #ef4444;"></span>
-            {% elif doc.get_document_type_display == 'Word' %}<span class="icon icon-doc" style="color: #3b82f6;"></span>
-            {% elif doc.get_document_type_display == 'Excel' %}<span class="icon icon-doc" style="color: #22c55e;"></span>
-            {% elif doc.get_document_type_display == 'PPT' %}<span class="icon icon-doc" style="color: #f97316;"></span>
-            {% elif doc.get_document_type_display == '图片' %}<span class="icon icon-camera"></span>
-            {% else %}<span class="icon icon-doc"></span>{% endif %}
+<div class="docs-page">
+    <section class="docs-title-row">
+        <div>
+            <h1>文档中心</h1>
+            <p>团队共享的学习资料、项目文档与研究成果</p>
         </div>
-        <div class="doc-info">
-            <div class="doc-title" title="{{ doc.title }}">{{ doc.title }}</div>
-            {% if doc.description %}
-            <div class="doc-desc">{{ doc.description }}</div>
-            {% endif %}
-            <div class="doc-meta">
-                <span><span class="icon icon-user" style="vertical-align: middle; margin-right: 4px;"></span>{{ doc.user.first_name|default:doc.user.username }}</span>
-                <span>{{ doc.uploaded_at|date:"Y-m-d" }}</span>
-                <span class="tag" style="background: var(--color-bg); font-size: 0.72rem; padding: 2px 8px;">{{ doc.get_document_type_display }}</span>
+        {% if user.is_authenticated %}
+        <a href="{% url 'my_page' %}#upload-document" class="docs-upload-button">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 15V3m0 0 4 4m-4-4-4 4M5 15v4h14v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            上传文档
+        </a>
+        {% endif %}
+    </section>
+
+    <section class="docs-stats">
+        <div class="docs-stat-card">
+            <span class="docs-stat-icon folder"><svg viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
+            <span><em>全部文档</em><strong>{{ document_count }}<small>份</small></strong><b class="muted">当前可见</b></span>
+        </div>
+        <div class="docs-stat-card">
+            <span class="docs-stat-icon clock"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+            <span><em>最近上传</em><strong>{{ recent_upload_count }}<small>份</small></strong><b class="muted">近 7 天</b></span>
+        </div>
+        <div class="docs-stat-card">
+            <span class="docs-stat-icon globe"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c2.2 2.5 3.2 5.5 3.2 9S14.2 18.5 12 21c-2.2-2.5-3.2-5.5-3.2-9S9.8 5.5 12 3Z" stroke="currentColor" stroke-width="2"/></svg></span>
+            <span><em>公开文档</em><strong>{{ public_document_count }}<small>份</small></strong><b class="muted">占比 {{ public_ratio }}%</b></span>
+        </div>
+        <div class="docs-stat-card">
+            <span class="docs-stat-icon download"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span><em>总下载次数</em><strong>{{ total_download_count }}<small>次</small></strong><b class="muted">真实下载累计</b></span>
+        </div>
+        <div class="docs-storage-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <strong>存储空间使用</strong>
+                <a href="{% url 'my_page' %}#upload-document">管理空间</a>
+            </div>
+            <div class="docs-storage-bar"><span style="width:{{ storage_percent }}%;"></span></div>
+            <div style="display:flex;justify-content:space-between;color:#64748b;font-size:13px;"><span>{{ storage_used_gb }} GB / 100 GB</span><span>{{ storage_percent }}%</span></div>
+        </div>
+    </section>
+
+    <section class="docs-table-card">
+        <form class="docs-filter-row" method="get" action="{% url 'document_list' %}">
+            <input type="hidden" name="category" value="{{ category }}">
+            <input type="hidden" name="sort" value="{{ sort }}">
+            <input type="hidden" name="view" value="{{ view }}">
+            <label class="docs-search">
+                <input name="q" value="{{ query }}" type="search" placeholder="搜索文件名、内容或上传者...">
+                <svg viewBox="0 0 24 24" fill="none"><path d="m21 21-4.3-4.3M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </label>
+            <select name="type" onchange="this.form.submit()">
+                <option value="all" {% if doc_type == 'all' %}selected{% endif %}>文档类型：全部</option>
+                <option value="pdf" {% if doc_type == 'pdf' %}selected{% endif %}>PDF</option>
+                <option value="word" {% if doc_type == 'word' %}selected{% endif %}>Word</option>
+                <option value="excel" {% if doc_type == 'excel' %}selected{% endif %}>Excel</option>
+                <option value="ppt" {% if doc_type == 'ppt' %}selected{% endif %}>PPT</option>
+                <option value="txt" {% if doc_type == 'txt' %}selected{% endif %}>文本</option>
+                <option value="zip" {% if doc_type == 'zip' %}selected{% endif %}>压缩包</option>
+                <option value="image" {% if doc_type == 'image' %}selected{% endif %}>图片</option>
+                <option value="data" {% if doc_type == 'data' %}selected{% endif %}>数据</option>
+                <option value="code" {% if doc_type == 'code' %}selected{% endif %}>代码</option>
+                <option value="other" {% if doc_type == 'other' %}selected{% endif %}>其他</option>
+            </select>
+            <select name="uploader" onchange="this.form.submit()">
+                <option value="all" {% if uploader == 'all' %}selected{% endif %}>上传者：全部</option>
+                {% for option_user in uploader_options %}
+                <option value="{{ option_user.username }}" {% if uploader == option_user.username %}selected{% endif %}>{{ option_user.first_name|default:option_user.username }}</option>
+                {% endfor %}
+            </select>
+            <select name="scope" onchange="this.form.submit()">
+                <option value="all" {% if scope == 'all' %}selected{% endif %}>可见范围：全部</option>
+                <option value="public" {% if scope == 'public' %}selected{% endif %}>团队可见</option>
+                <option value="private" {% if scope == 'private' %}selected{% endif %}>仅自己可见</option>
+            </select>
+            <button type="submit">搜索</button>
+            <a class="docs-reset" href="{% url 'document_list' %}">⟳ 重置</a>
+        </form>
+
+        <div class="docs-category-row">
+            <nav>
+                <a class="{% if category == 'all' %}active{% endif %}" href="?category=all&q={{ query|urlencode }}&type={{ doc_type }}&uploader={{ uploader }}&scope={{ scope }}&sort={{ sort }}&view={{ view }}">全部</a>
+                <a class="{% if category == 'project' %}active{% endif %}" href="?category=project&q={{ query|urlencode }}&type={{ doc_type }}&uploader={{ uploader }}&scope={{ scope }}&sort={{ sort }}&view={{ view }}">项目文档</a>
+                <a class="{% if category == 'paper' %}active{% endif %}" href="?category=paper&q={{ query|urlencode }}&type={{ doc_type }}&uploader={{ uploader }}&scope={{ scope }}&sort={{ sort }}&view={{ view }}">论文资料</a>
+                <a class="{% if category == 'experiment' %}active{% endif %}" href="?category=experiment&q={{ query|urlencode }}&type={{ doc_type }}&uploader={{ uploader }}&scope={{ scope }}&sort={{ sort }}&view={{ view }}">实验数据</a>
+                <a class="{% if category == 'learning' %}active{% endif %}" href="?category=learning&q={{ query|urlencode }}&type={{ doc_type }}&uploader={{ uploader }}&scope={{ scope }}&sort={{ sort }}&view={{ view }}">学习资料</a>
+                <a class="{% if category == 'meeting' %}active{% endif %}" href="?category=meeting&q={{ query|urlencode }}&type={{ doc_type }}&uploader={{ uploader }}&scope={{ scope }}&sort={{ sort }}&view={{ view }}">会议资料</a>
+            </nav>
+            <div class="docs-view-tools">
+                <select onchange="location.href='?category={{ category }}&q={{ query|urlencode }}&type={{ doc_type }}&uploader={{ uploader }}&scope={{ scope }}&view={{ view }}&sort=' + this.value">
+                    <option value="latest" {% if sort == 'latest' %}selected{% endif %}>最新上传</option>
+                    <option value="downloads" {% if sort == 'downloads' %}selected{% endif %}>下载次数</option>
+                    <option value="name" {% if sort == 'name' %}selected{% endif %}>文件名</option>
+                </select>
+                <a class="{% if view == 'grid' %}active{% endif %}" href="?category={{ category }}&q={{ query|urlencode }}&type={{ doc_type }}&uploader={{ uploader }}&scope={{ scope }}&sort={{ sort }}&view=grid"><svg viewBox="0 0 24 24" fill="none"><path d="M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z" stroke="currentColor" stroke-width="2"/></svg></a>
+                <a class="{% if view == 'list' %}active{% endif %}" href="?category={{ category }}&q={{ query|urlencode }}&type={{ doc_type }}&uploader={{ uploader }}&scope={{ scope }}&sort={{ sort }}&view=list"><svg viewBox="0 0 24 24" fill="none"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a>
             </div>
         </div>
-        <div class="doc-actions">
-            <button onclick="previewFile('{% url 'preview_document' doc.id %}')" class="btn btn-sm btn-primary" style="padding: 6px 12px;">预览</button>
-            <a href="{% url 'download_document' doc.id %}" class="btn btn-sm btn-secondary" style="padding: 6px 12px;">下载</a>
+
+        {% if documents %}
+        {% if view == 'grid' %}
+        <div class="docs-grid-view">
+            {% for doc in documents %}
+            <article>
+                <img src="{% static 'assets/file-icons/' %}{{ doc.ui_icon }}" alt="">
+                <strong>{{ doc.title }}</strong>
+                <span>{{ doc.get_category_display }} · {{ doc.ui_type }}</span>
+                <p>{{ doc.description|default:"暂无简介"|truncatechars:60 }}</p>
+                <footer>
+                    <small>{{ doc.user.first_name|default:doc.user.username }}</small>
+                    <a href="{% url 'download_document' doc.id %}">下载</a>
+                </footer>
+            </article>
+            {% endfor %}
         </div>
-    </div>
-    {% endfor %}
-</div>
-{% else %}
-<div class="card anim-fade-up-1">
-    <div class="empty-state">
-        <div class="empty-state-icon"><span class="icon icon-folder" style="width: 48px; height: 48px;"></span></div>
-        <p>暂无文档</p>
-        {% if user.is_authenticated %}
-        <a href="{% url 'my_page' %}" class="link" style="margin-top: 8px; display: inline-block;">上传第一个文档 →</a>
+        {% else %}
+        <div class="docs-table-wrap">
+            <table class="docs-table">
+                <thead>
+                    <tr>
+                        <th>文件名</th>
+                        <th>类型</th>
+                        <th>上传者</th>
+                        <th>上传时间</th>
+                        <th>可见范围</th>
+                        <th>下载次数</th>
+                        <th>简介</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doc in documents %}
+                    <tr>
+                        <td>
+                            <div class="docs-file-cell">
+                                <img src="{% static 'assets/file-icons/' %}{{ doc.ui_icon }}" alt="">
+                                <strong>{{ doc.title }}</strong>
+                                <em>{{ doc.get_category_display }}</em>
+                            </div>
+                        </td>
+                        <td>{{ doc.ui_type }}</td>
+                        <td>
+                            <div class="docs-uploader">
+                                {% if doc.user.profile.avatar %}<img src="{{ doc.user.profile.avatar.url }}" alt="">{% else %}<span>{{ doc.user.first_name|default:doc.user.username|first|upper }}</span>{% endif %}
+                                <strong>{{ doc.user.first_name|default:doc.user.username }}</strong>
+                                <small>{{ doc.user.profile.get_member_type_display }}</small>
+                            </div>
+                        </td>
+                        <td>{{ doc.uploaded_at|date:"Y-m-d H:i" }}</td>
+                        <td><span class="docs-scope {% if doc.is_public %}public{% else %}private{% endif %}">{% if doc.is_public %}团队可见{% else %}仅自己可见{% endif %}</span></td>
+                        <td>{{ doc.download_count }}</td>
+                        <td class="docs-desc">{{ doc.description|default:"暂无简介"|truncatechars:48 }}</td>
+                        <td>
+                            <div class="docs-actions">
+                                <button onclick="previewFile('{% url 'preview_document' doc.id %}')">预览</button>
+                                <a href="{% url 'download_document' doc.id %}">下载</a>
+                                <a href="{% url 'download_document' doc.id %}" class="more">···</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         {% endif %}
-    </div>
+        <div class="docs-pagination">
+            <span>共 {{ filtered_count }} 条</span>
+            <div>
+                {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&category={{ category }}&q={{ query|urlencode }}&type={{ doc_type }}&uploader={{ uploader }}&scope={{ scope }}&sort={{ sort }}&view={{ view }}">‹</a>{% endif %}
+                {% for num in paginator.page_range %}
+                    {% if num == page_obj.number %}<a class="active">{{ num }}</a>{% elif num <= 5 or num == paginator.num_pages %}<a href="?page={{ num }}&category={{ category }}&q={{ query|urlencode }}&type={{ doc_type }}&uploader={{ uploader }}&scope={{ scope }}&sort={{ sort }}&view={{ view }}">{{ num }}</a>{% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&category={{ category }}&q={{ query|urlencode }}&type={{ doc_type }}&uploader={{ uploader }}&scope={{ scope }}&sort={{ sort }}&view={{ view }}">›</a>{% endif %}
+            </div>
+            <span>10 条/页</span>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <img src="{% static 'assets/empty-states/empty-documents.png' %}" alt="">
+            暂无文档
+        </div>
+        {% endif %}
+    </section>
 </div>
-{% endif %}
 {% endblock %}
