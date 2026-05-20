@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>登录 · LabHub 实验室管理系统</title>
-    <link rel="stylesheet" href="{% static 'css/labhub.css' %}">
+    <link rel="stylesheet" href="{% static 'css/labhub.css' %}?v=20260520-ui2">
     <style>
         body { min-height:100vh; background:#fff; }
         .login-shell { min-height:100vh; display:grid; grid-template-columns:minmax(0,1.1fr) 520px; }
@@ -14,24 +14,30 @@
             padding:48px;
             display:flex;
             align-items:flex-end;
-            background:url('{% static 'assets/banners/login-bg.png' %}') center/cover no-repeat;
+            background:url('{% static 'assets/banners/login-bg.png' %}?v=2') left center/cover no-repeat;
             color:#fff;
             overflow:hidden;
         }
         .login-visual-content { position:relative; z-index:1; max-width:620px; }
         .login-visual h1 { margin:0 0 12px; font-size:34px; line-height:1.2; }
         .login-visual p { margin:0; color:rgba(255,255,255,.82); line-height:1.8; }
-        .login-panel { display:flex; flex-direction:column; justify-content:center; padding:48px 64px; background:#fff; }
-        .login-logo { display:flex; align-items:center; gap:12px; color:var(--color-primary); font-weight:700; margin-bottom:36px; }
-        .login-logo img { width:42px; height:42px; }
+        .login-panel { display:flex; flex-direction:column; justify-content:center; padding:44px 56px; background:#fff; }
+        .login-panel-inner { width:100%; max-width:420px; margin:0 auto; }
+        .login-logo { display:flex; align-items:center; gap:14px; color:var(--color-primary); font-weight:700; margin-bottom:30px; }
+        .login-logo img { width:46px; height:46px; }
         .login-card-form { width:100%; }
-        .login-card-form h2 { margin:0; font-size:28px; color:var(--color-primary); }
-        .login-card-form .subtitle { margin:10px 0 28px; color:var(--color-muted); line-height:1.7; }
-        .login-footer { margin-top:36px; color:var(--color-muted); font-size:12px; }
+        .login-card-form h2 { margin:0; font-size:30px; line-height:1.25; color:var(--color-primary); }
+        .login-card-form .subtitle { margin:10px 0 24px; color:var(--color-muted); line-height:1.65; }
+        .login-card-form .form-group { margin-bottom:14px; }
+        .login-card-form .form-label { display:block; margin-bottom:8px; font-size:15px; font-weight:700; color:var(--color-primary); }
+        .login-card-form .form-input { height:48px; border-radius:10px; padding:10px 16px; font-size:15px; }
+        .login-submit { width:100%; height:48px; margin-top:2px; border-radius:10px; }
+        .login-register { margin:20px 0 0; color:var(--color-muted); font-size:14px; }
+        .login-footer { margin-top:34px; color:var(--color-muted); font-size:12px; line-height:1.6; }
         @media (max-width:900px) {
             .login-shell { grid-template-columns:1fr; }
             .login-visual { min-height:260px; padding:32px; }
-            .login-panel { padding:40px 24px; }
+            .login-panel { padding:36px 24px; }
         }
     </style>
 </head>
@@ -39,38 +45,41 @@
     <main class="login-shell">
         <section class="login-visual">
             <div class="login-visual-content">
-                <h1>LabHub 实验室管理系统</h1>
+                <h1>核电装备与安全研究室</h1>
+                <p style="font-size:14px;color:rgba(255,255,255,.7);margin-bottom:8px;">Nuclear Power Equipment and Safety Research Laboratory</p>
                 <p>面向高校实验室、科研团队与课题组的协作管理平台，用于统一管理成员、计划、文档、公告与科研成果。</p>
             </div>
         </section>
         <section class="login-panel">
-            <a href="{% url 'home' %}" class="login-logo" style="text-decoration:none;">
-                <img src="{% static 'assets/logo/labhub-logo.svg' %}" alt="LabHub">
-                <span>LabHub</span>
-            </a>
-            <div class="login-card-form">
-                <h2>实验室管理系统</h2>
-                <p class="subtitle">科研团队协作与实验室管理平台。</p>
-                {% if messages %}
-                    {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
-                <form method="post" id="loginForm">
-                    {% csrf_token %}
-                    <div class="form-group">
-                        <label class="form-label">账号</label>
-                        <input type="text" name="username" required class="form-input" autocomplete="username" placeholder="请输入账号">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">密码</label>
-                        <input type="password" name="password" required class="form-input" autocomplete="current-password" placeholder="请输入密码">
-                    </div>
-                    <button type="submit" class="btn btn-primary" style="width:100%;height:44px;margin-top:8px;">登录</button>
-                </form>
-                <p style="margin-top:18px;color:var(--color-muted);font-size:14px;">还没有账号？<a href="{% url 'register' %}" class="link">立即注册</a></p>
+            <div class="login-panel-inner">
+                <a href="{% url 'home' %}" class="login-logo" style="text-decoration:none;">
+                    <img src="{% static 'assets/logo/labhub-logo.svg' %}" alt="LabHub">
+                    <span style="font-size:20px;letter-spacing:2px;font-weight:600;">NPE-SRL</span>
+                </a>
+                <div class="login-card-form">
+                    <h2>实验室管理系统</h2>
+                    <p class="subtitle">科研团队协作与实验室管理平台。</p>
+                    {% if messages %}
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                    <form method="post" id="loginForm">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label class="form-label">账号</label>
+                            <input type="text" name="username" required class="form-input" autocomplete="username" placeholder="请输入账号">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">密码</label>
+                            <input type="password" name="password" required class="form-input" autocomplete="current-password" placeholder="请输入密码">
+                        </div>
+                        <button type="submit" class="btn btn-primary login-submit">登录</button>
+                    </form>
+                    <p class="login-register">还没有账号？<a href="{% url 'register' %}" class="link">立即注册</a></p>
+                </div>
+                <div class="login-footer">© 2026 NPE-SRL. For academic collaboration and laboratory management.</div>
             </div>
-            <div class="login-footer">© 2026 LabHub. For academic collaboration and laboratory management.</div>
         </section>
     </main>
 </body>
