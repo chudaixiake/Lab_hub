@@ -78,7 +78,7 @@
                             <span class="task-tag">计划</span>
                         </span>
                         <span class="row-sub">{{ member_data.profile.user.first_name|default:member_data.profile.user.username }}</span>
-                        <span class="row-time {% if not plan.is_completed %}deadline{% endif %}">{{ plan.date|date:"m-d" }} 截止</span>
+                        <span class="row-time {% if not plan.is_completed %}deadline{% endif %}">{% if plan.deadline %}{{ plan.deadline|date:"m-d" }} 截止{% else %}至今{% endif %}</span>
                     </label>
                     {% endfor %}
                 {% empty %}
@@ -114,7 +114,7 @@
             </div>
             <div class="panel-body">
                 <table class="plan-table">
-                    <thead><tr><th>计划名称</th><th>负责人</th><th>进度</th><th>状态</th><th>截止日期</th></tr></thead>
+                    <thead><tr><th>计划名称</th><th>负责人</th><th>进度</th><th>状态</th><th>截止时间</th></tr></thead>
                     <tbody>
                     {% for member_data in members_with_plans|slice:":5" %}
                         {% for plan in member_data.plans|slice:":1" %}
@@ -123,7 +123,7 @@
                             <td>{{ member_data.profile.user.first_name|default:member_data.profile.user.username }}</td>
                             <td><span class="compact-progress"><span class="compact-bar"><span style="width:{% if plan.is_completed %}100{% else %}45{% endif %}%;"></span></span>{% if plan.is_completed %}100{% else %}45{% endif %}%</span></td>
                             <td><span class="status-pill">{% if plan.is_completed %}已完成{% else %}进行中{% endif %}</span></td>
-                            <td>{{ plan.date|date:"Y-m-d" }}</td>
+                            <td>{% if plan.deadline %}{{ plan.deadline|date:"Y-m-d" }}{% else %}至今{% endif %}</td>
                         </tr>
                         {% endfor %}
                     {% empty %}

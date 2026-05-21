@@ -1,0 +1,172 @@
+(function(){
+        var nav = document.getElementById('mainNav');
+        window.addEventListener('scroll', function(){
+            nav.classList.toggle('scrolled', window.scrollY > 10);
+        });
+        var path = window.location.pathname;
+        document.querySelectorAll('.nav-links a[data-page]').forEach(function(a){
+            if (a.getAttribute('href') === path) a.classList.add('active');
+        });
+    })();
+
+function previewFile(url) {
+            window.location.href = url;
+        }
+
+let isChatOpen = false;
+        setInterval(() => {
+            const catFace = document.getElementById('catFace');
+            if (catFace) {
+                catFace.textContent = '😸';
+                setTimeout(() => { catFace.textContent = '😺'; }, 500);
+            }
+        }, 3000);
+
+        function toggleAIChat() {
+            const chatBox = document.getElementById('aiChatBox');
+            const btn = document.getElementById('aiChatBtn');
+            isChatOpen = !isChatOpen;
+            chatBox.style.display = isChatOpen ? 'flex' : 'none';
+            btn.style.transform = isChatOpen ? 'scale(0.9) rotate(90deg)' : '';
+            if (isChatOpen) setTimeout(() => document.getElementById('chatInput').focus(), 100);
+        }
+
+        function handleKeyPress(event) { if (event.key === 'Enter') sendMessage(); }
+
+        function appendMessage(content, isUser) {
+            const chatMessages = document.getElementById('chatMessages');
+            const d = document.createElement('div');
+            d.style.cssText = 'display:flex;gap:10px;margin-bottom:16px;flex-direction:' + (isUser ? 'row-reverse' : 'row');
+            const av = document.createElement('div');
+            av.style.cssText = 'width:34px;height:34px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;';
+            if (isUser) {
+                const uav = document.getElementById('userAvatarUrl');
+                if (uav && uav.textContent.trim()) {
+                    av.style.backgroundImage = 'url(' + uav.textContent.trim() + ')';
+                    av.style.backgroundSize = 'cover';
+                    av.style.backgroundPosition = 'center';
+                } else {
+                    av.style.background = 'linear-gradient(135deg, #f093fb, #f5576c)';
+                    av.style.color = 'white';
+                    av.textContent = '{{ user.username|default:"我"|slice:":1"|upper }}';
+                }
+            } else {
+                av.style.background = 'linear-gradient(135deg, #6366f1, #8b5cf6)';
+                av.style.color = 'white';
+                av.textContent = '🤖';
+            }
+            const mb = document.createElement('div');
+            mb.style.cssText = 'padding:12px 16px;border-radius:14px;max-width:calc(100% - 50px);font-size:13.5px;line-height:1.6;' +
+                (isUser ? 'background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;' : 'background:white;color:#374151;box-shadow:0 1px 4px rgba(0,0,0,0.06);');
+            mb.innerHTML = content.replace(/\n/g, '<br>');
+            d.appendChild(av); d.appendChild(mb);
+            chatMessages.appendChild(d);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showLoading() {
+            const chatMessages = document.getElementById('chatMessages');
+            const ld = document.createElement('div');
+            ld.id = 'loadingMessage';
+            ld.style.cssText = 'display:flex;gap:10px;margin-bottom:16px;';
+            ld.innerHTML = '<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white;font-size:16px;">🤖</div><div style="background:white;padding:12px 16px;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.06);"><p style="margin:0;font-size:13.5px;color:#94a3b8;">思考中...</p></div>';
+            chatMessages.appendChild(ld);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        function removeLoading() { const l = document.getElementById('loadingMessage'); if (l) l.remove(); }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            const btn = document.getElementById('sendBtn');
+            if (!msg) return;
+            input.disabled = true; btn.disabled = true; btn.style.opacity = '0.5';
+            appendMessage(msg, true); input.value = ''; showLoading();
+            try {
+                const r = await fetch('/ai/chat/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCookie('csrftoken') },
+                    body: 'message=' + encodeURIComponent(msg)
+                });
+                removeLoading();
+                if (r.ok) { const d = await r.json(); appendMessage(d.success ? d.message : '抱歉，出现了一些问题。', false); }
+                else appendMessage('服务器响应错误，请稍后再试。', false);
+            } catch(e) { removeLoading(); appendMessage('网络连接错误，请检查网络。', false); }
+            finally { input.disabled = false; btn.disabled = false; btn.style.opacity = '1'; input.focus(); }
+        }
+        function getCookie(n) { let v=null; if(document.cookie) document.cookie.split(';').forEach(c=>{ c=c.trim(); if(c.startsWith(n+'=')) v=decodeURIComponent(c.substring(n.length+1)); }); return v; }
+
+window.addEventListener('load', function() {
+        // 检测设备
+        var isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth <= 768;
+        if (!isMobileDevice) return;
+        
+        // 页面顺序（按照导航栏顺序）
+        var pages = [
+            '/',                          // 首页
+            '/members/',                  // 成员
+            '/overview/',                 // 总览
+            '/plans/',                    // 计划
+            '/documents/',                // 文档
+            '/resume/',                   // 简历
+            '/announcements/'             // 公告
+        ];
+        
+        var startX = 0;
+        var startY = 0;
+        
+        // 触摸开始
+        document.body.addEventListener('touchstart', function(e) {
+            // 如果在导航栏上滑动，不处理
+            if (e.target.closest('#mainNav') || e.target.closest('.nav-container') || e.target.closest('.nav-links')) {
+                return;
+            }
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        });
+        
+        // 触摸结束
+        document.body.addEventListener('touchend', function(e) {
+            // 如果在导航栏上滑动，不处理
+            if (e.target.closest('#mainNav') || e.target.closest('.nav-container') || e.target.closest('.nav-links')) {
+                return;
+            }
+            
+            var endX = e.changedTouches[0].clientX;
+            var endY = e.changedTouches[0].clientY;
+            
+            var diffX = endX - startX;
+            var diffY = endY - startY;
+            
+            // 只处理水平滑动
+            if (Math.abs(diffX) < Math.abs(diffY)) return;
+            if (Math.abs(diffX) < 50) return;
+            
+            var currentPath = window.location.pathname;
+            var currentIndex = pages.indexOf(currentPath);
+            
+            // 如果当前页面不在列表中，不处理
+            if (currentIndex === -1) return;
+            
+            var targetUrl = null;
+            
+            // 左滑 - 下一个页面
+            if (diffX < -50) {
+                var nextIndex = currentIndex + 1;
+                if (nextIndex >= pages.length) nextIndex = 0;  // 循环到第一个
+                targetUrl = pages[nextIndex];
+            }
+            // 右滑 - 上一个页面
+            else if (diffX > 50) {
+                var prevIndex = currentIndex - 1;
+                if (prevIndex < 0) prevIndex = pages.length - 1;  // 循环到最后一个
+                targetUrl = pages[prevIndex];
+            }
+            
+            if (targetUrl) {
+                setTimeout(function() {
+                    window.location.href = targetUrl;
+                }, 150);
+            }
+        });
+    });

@@ -136,6 +136,50 @@
                 </section>
                 {% endfor %}
             </div>
+            {% elif not requested_member %}
+            <!-- 全部成员汇总视图 -->
+            <div class="selected-member-summary">
+                <span class="selected-avatar">♙</span>
+                <div class="selected-info">
+                    <h2>全部成员</h2>
+                    <p>团队计划总览</p>
+                </div>
+                <span></span><span></span>
+                <div class="selected-stats">
+                    <div><em>计划数</em><strong>{{ total_plan_count }}</strong></div>
+                    <div><em>已完成</em><strong class="green">{{ total_completed_count }}</strong></div>
+                    <div><em>进行中</em><strong class="blue">{{ total_in_progress_count }}</strong></div>
+                    <div><em>完成率</em><strong class="orange">{{ avg_completion_rate|floatformat:0 }}%</strong></div>
+                </div>
+                <div class="selected-progress"><span style="width:{{ avg_completion_rate }}%;"></span></div>
+            </div>
+            <div class="plan-tip">ⓘ 显示所有成员的公开计划，点击左侧成员可查看个人计划</div>
+
+            <div class="plan-detail-list">
+                {% for plan in plans %}
+                <article class="plan-detail-card" data-plan-id="{{ plan.id }}">
+                    <div class="plan-detail-top">
+                        <span class="plan-main-icon">▤</span>
+                        <div style="min-width:0;flex:1;">
+                            <h3>{{ plan.content|truncatechars:28 }}</h3>
+                            <div class="plan-tags">
+                                <span>▣ {{ plan.user.first_name|default:plan.user.username }}</span>
+                                <span class="green">{{ plan.date_range }}</span>
+                                <span class="blue">{{ plan.visible_sub_plans|length }} 个子计划</span>
+                                <span class="blue">{{ plan.ui_status }}</span>
+                            </div>
+                        </div>
+                        <div class="plan-card-progress">
+                            <em>进度</em>
+                            <strong>{{ plan.progress_rate }}%</strong>
+                            <span><i style="width:{{ plan.progress_rate }}%;"></i></span>
+                        </div>
+                    </div>
+                </article>
+                {% empty %}
+                <div class="empty-state compact"><img src="{% static 'assets/empty-states/empty-tasks.png' %}" alt="">暂无计划</div>
+                {% endfor %}
+            </div>
             {% elif selected_member_data %}
             <div class="selected-member-summary">
                 {% if selected_member_data.profile.avatar %}<img src="{{ selected_member_data.profile.avatar.url }}" alt="">{% else %}<span class="selected-avatar">{{ selected_member_data.profile.user.first_name|default:selected_member_data.profile.user.username|first|upper }}</span>{% endif %}
@@ -146,6 +190,8 @@
                 {% if request.user.is_authenticated and request.user.id == selected_member_data.profile.user_id %}
                 <span class="my-plan-badge">我的计划</span>
                 <span class="current-user-badge">当前登录用户</span>
+                {% else %}
+                <span></span><span></span>
                 {% endif %}
                 <div class="selected-stats">
                     <div><em>计划数</em><strong>{{ selected_member_data.plan_count }}</strong></div>
@@ -154,7 +200,6 @@
                     <div><em>完成率</em><strong class="orange">{{ selected_member_data.completion_rate|floatformat:0 }}%</strong></div>
                 </div>
                 <div class="selected-progress"><span style="width:{{ selected_member_data.completion_rate }}%;"></span></div>
-                <strong class="selected-progress-text">{{ selected_member_data.completion_rate|floatformat:0 }}%</strong>
             </div>
             <div class="plan-tip">ⓘ 点击左侧成员可预览计划；仅可修改自己的计划</div>
 
@@ -200,6 +245,9 @@
                     <div class="plan-card-actions">
                         <button onclick="togglePlan({{ plan.id }})">✓ {% if plan.is_completed %}标记未完成{% else %}标记完成{% endif %}</button>
                         <button class="primary" onclick="addSubPlan({{ plan.id }})">＋ 添加子计划</button>
+                        {% if not plan.is_completed %}
+                        <button onclick="extendDeadline({{ plan.id }})">⏱ 延期</button>
+                        {% endif %}
                         <a href="{% url 'edit_plan' plan.id %}">✎ 编辑计划</a>
                         <a class="danger" href="{% url 'delete_plan' plan.id %}" onclick="return confirm('确定删除这个计划？')">▢ 删除计划</a>
                     </div>
@@ -236,11 +284,70 @@
     </div>
 </div>
 
+<!-- 延期模态框 -->
+<div id="extendDeadlineModal" class="plan-modal">
+    <div class="plan-modal-card">
+        <h3>延期计划</h3>
+        <form id="extendDeadlineForm">
+            {% csrf_token %}
+            <input type="hidden" name="plan_id" id="extendPlanId">
+            <label>新的截止时间</label>
+            <input type="date" name="deadline" id="extendDeadlineDate" required>
+            <div id="extendDeadlineError"></div>
+            <div class="plan-modal-actions">
+                <button type="button" onclick="closeExtendDeadlineModal()">取消</button>
+                <button type="submit" id="extendDeadlineSubmitBtn">确认延期</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function getCsrfToken() {
     var match = document.cookie.match(/csrftoken=([^;]+)/);
     return match ? match[1] : '';
 }
+
+function extendDeadline(planId) {
+    document.getElementById('extendPlanId').value = planId;
+    document.getElementById('extendDeadlineModal').style.display = 'flex';
+    document.getElementById('extendDeadlineError').style.display = 'none';
+    // 默认设置为7天后
+    var nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    document.getElementById('extendDeadlineDate').value = nextWeek.toISOString().split('T')[0];
+    document.getElementById('extendDeadlineDate').focus();
+}
+
+function closeExtendDeadlineModal() {
+    document.getElementById('extendDeadlineModal').style.display = 'none';
+}
+
+document.getElementById('extendDeadlineModal').addEventListener('click', function(e) {
+    if (e.target === this) closeExtendDeadlineModal();
+});
+
+document.getElementById('extendDeadlineForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var planId = document.getElementById('extendPlanId').value;
+    var deadline = document.getElementById('extendDeadlineDate').value;
+    var errorDiv = document.getElementById('extendDeadlineError');
+    
+    fetch('/extend/deadline/' + planId + '/', {
+        method: 'POST',
+        headers: {'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'deadline=' + encodeURIComponent(deadline)
+    }).then(function(r){ return r.json(); }).then(function(data){
+        if (data.success) window.location.reload();
+        else {
+            errorDiv.textContent = data.error || '延期失败，请重试';
+            errorDiv.style.display = 'block';
+        }
+    }).catch(function(){
+        errorDiv.textContent = '网络错误，请重试';
+        errorDiv.style.display = 'block';
+    });
+});
 function addSubPlan(planId) {
     document.getElementById('parentPlanId').value = planId;
     document.getElementById('subPlanModal').style.display = 'flex';

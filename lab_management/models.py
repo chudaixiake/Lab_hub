@@ -138,6 +138,8 @@ class DailyPlan(models.Model):
     content = models.TextField("计划内容")
     is_completed = models.BooleanField("是否完成", default=False)
     is_public = models.BooleanField("公开", default=True, help_text="公开计划可被所有人查看，不公开仅自己可见")
+    deadline = models.DateField("截止时间", null=True, blank=True, help_text="不设置表示至今")
+    is_delayed = models.BooleanField("是否延期", default=False)
     parent = models.ForeignKey(
         'self',
         on_delete=models.CASCADE,
@@ -184,12 +186,46 @@ class DailyPlan(models.Model):
     def date_range(self):
         """返回时间跨度字符串"""
         if self.is_main_plan:
-            end = self.end_date
-            if end:
-                return f"{self.date} ~ {end}"
+            # 优先使用 deadline，如果没有则使用子计划日期
+            if self.deadline:
+                return f"{self.date} ~ {self.deadline}"
+            elif self.end_date:
+                return f"{self.date} ~ {self.end_date}"
             else:
                 return f"{self.date} ~ 至今"
         return str(self.date)
+    
+    @property
+    def is_overdue(self):
+        """检查计划是否已超期"""
+        if self.is_completed:
+            return False
+        if self.deadline:
+            from django.utils import timezone
+            return timezone.localdate() > self.deadline
+        return False
+    
+    def get_status_display(self):
+        """获取计划状态显示文本"""
+        if self.is_completed:
+            return "已完成"
+        if self.is_overdue:
+            return "已超期"
+        if self.is_delayed:
+            return "已延期"
+        if self.deadline:
+            return "进行中"
+        return "进行中"
+    
+    def get_status_class(self):
+        """获取状态对应的CSS类名"""
+        if self.is_completed:
+            return "completed"
+        if self.is_overdue:
+            return "overdue"
+        if self.is_delayed:
+            return "delayed"
+        return "ongoing"
 
 
 class Announcement(models.Model):

@@ -8,6 +8,7 @@ from django.conf import settings
 from django.http import FileResponse, HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
 from django.db import models
+from django.db.models import Q
 from django.core.paginator import Paginator
 from django.utils import timezone
 import os
@@ -365,8 +366,18 @@ def plan_list(request):
         })
     total_plan_count = main_plans.count()
     total_completed_count = main_plans.filter(is_completed=True).count()
-    delayed_plan_count = main_plans.filter(is_completed=False, date__lt=today_date).count()
-    total_in_progress_count = main_plans.filter(is_completed=False, date__gte=today_date).count()
+    # 延期计划：is_delayed=True 或 deadline < today
+    delayed_plan_count = main_plans.filter(
+        is_completed=False
+    ).filter(
+        Q(is_delayed=True) | Q(deadline__isnull=False, deadline__lt=today_date)
+    ).count()
+    # 进行中计划：未完成且未延期
+    total_in_progress_count = main_plans.filter(
+        is_completed=False
+    ).exclude(
+        Q(is_delayed=True) | Q(deadline__isnull=False, deadline__lt=today_date)
+    ).count()
     avg_completion_rate = round(total_completed_count / total_plan_count * 100, 0) if total_plan_count > 0 else 0
     selected_member_data = None
     if requested_member:
@@ -390,7 +401,7 @@ def plan_list(request):
         if plan.is_completed:
             plan.ui_status = '已完成'
             plan.ui_status_key = 'completed'
-        elif plan.date < today_date:
+        elif plan.is_delayed or (plan.deadline and plan.deadline < today_date):
             plan.ui_status = '延期'
             plan.ui_status_key = 'delayed'
         else:
@@ -893,7 +904,25 @@ def my_page(request):
         plan.workspace_progress = 100 if plan.is_completed else (round(sub_completed / sub_total * 100) if sub_total else 0)
         plan.workspace_sub_completed = sub_completed
         plan.workspace_sub_total = sub_total
-        plan.workspace_status = '已完成' if plan.is_completed else ('已延期' if plan.date and plan.date < timezone.localdate() else '进行中')
+        
+        # 正确的状态判断逻辑
+        if plan.is_completed:
+            plan.workspace_status = '已完成'
+        elif plan.is_delayed:
+            plan.workspace_status = '已延期'
+        elif plan.deadline:
+            if plan.deadline < timezone.localdate():
+                plan.workspace_status = '已超期'
+            else:
+                plan.workspace_status = '进行中'
+        else:
+            plan.workspace_status = '进行中'
+        
+        # 截止时间显示（deadline 或 "至今"）
+        if plan.deadline:
+            plan.workspace_deadline_display = plan.deadline.strftime('%m-%d')
+        else:
+            plan.workspace_deadline_display = '至今'
     
     # 标记收到的消息为已读
     Message.objects.filter(receiver=user, is_read=False).update(is_read=True)
@@ -907,6 +936,7 @@ def my_page(request):
         'received_messages': received_messages,
         'recent_announcements': recent_announcements,
         'completed_plans_count': completed_plans_count,
+        'today': timezone.localdate(),
         'in_progress_plans_count': in_progress_plans_count,
         'public_documents_count': public_documents_count,
         'private_documents_count': private_documents_count,
@@ -1137,6 +1167,7 @@ def add_plan(request):
         next_url = request.POST.get('next') or 'my_page'
         content = request.POST.get('content')
         date = request.POST.get('date')
+        deadline = request.POST.get('deadline')
         parent_id = request.POST.get('parent_id')
         
         if not content:
@@ -1156,6 +1187,7 @@ def add_plan(request):
             user=request.user,
             content=content,
             date=date or None,
+            deadline=deadline or None,  # 截止时间（可选）
             parent=parent_plan  # 设置父计划
         )
         
@@ -1180,6 +1212,7 @@ def edit_plan(request, plan_id):
     if request.method == 'POST':
         plan.content = request.POST.get('content')
         plan.date = request.POST.get('date') or None
+        plan.deadline = request.POST.get('deadline') or None
         plan.is_completed = request.POST.get('is_completed') == 'on'
         plan.is_public = request.POST.get('is_public') == 'on'
         plan.save()
@@ -1209,6 +1242,30 @@ def toggle_plan(request, plan_id):
         plan.save()
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'error': '没有权限'})
+
+
+@login_required
+@require_POST
+def extend_deadline(request, plan_id):
+    """延期计划截止时间"""
+    plan = get_object_or_404(DailyPlan, id=plan_id)
+    
+    if request.user != plan.user and not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': '没有权限'})
+    
+    new_deadline = request.POST.get('deadline')
+    if not new_deadline:
+        return JsonResponse({'success': False, 'error': '请选择新的截止时间'})
+    
+    plan.deadline = new_deadline
+    plan.is_delayed = True
+    plan.save()
+    
+    return JsonResponse({
+        'success': True, 
+        'message': '计划已延期',
+        'new_deadline': new_deadline
+    })
 
 
 @login_required
@@ -1811,15 +1868,17 @@ def create_plan_excel_with_hierarchy(title, main_plans, filename, show_month=Tru
         sub_plans = list(plan.sub_plans.all().order_by('date', 'order'))
         month_str = f"{plan.date.month}月"
         
-        # 计算日期范围
-        if sub_plans:
+        # 计算日期范围（优先使用 deadline）
+        if plan.deadline:
+            date_range = f"{plan.date} 至 {plan.deadline}"
+        elif sub_plans:
             end_date = max(sub.date for sub in sub_plans)
             if end_date == plan.date:
                 date_range = str(plan.date)
             else:
                 date_range = f"{plan.date} 至 {end_date}"
         else:
-            date_range = str(plan.date)
+            date_range = f"{plan.date} 至 至今"
         
         # 子计划内容汇总
         if sub_plans:
@@ -1827,8 +1886,8 @@ def create_plan_excel_with_hierarchy(title, main_plans, filename, show_month=Tru
         else:
             sub_content = ''
         
-        # 状态
-        status = '已完成' if plan.is_completed else '进行中'
+        # 状态（使用新的状态判断方法）
+        status = plan.get_status_display()
         if plan.is_completed:
             completed_plans += 1
         total_plans += 1
@@ -1886,7 +1945,7 @@ def create_plan_excel_with_hierarchy(title, main_plans, filename, show_month=Tru
             ws.cell(row=row_idx, column=col_idx).border = thin_border
             col_idx += 1
             
-            sub_status = '已完成' if sub.is_completed else '进行中'
+            sub_status = sub.get_status_display()
             ws.cell(row=row_idx, column=col_idx, value=sub_status).font = data_font
             ws.cell(row=row_idx, column=col_idx).alignment = data_alignment
             ws.cell(row=row_idx, column=col_idx).border = thin_border

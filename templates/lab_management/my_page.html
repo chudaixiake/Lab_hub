@@ -109,12 +109,20 @@
                     <div>
                         <strong>{{ plan.content|truncatechars:22 }}</strong>
                         <span>
-                            {% if plan.is_completed %}<b class="badge-green">已完成</b>{% else %}<b class="badge-blue">计划中</b>{% endif %}
+                            {% if plan.is_completed %}
+                                <b class="badge-green">已完成</b>
+                            {% elif plan.is_delayed %}
+                                <b class="badge-orange">已延期</b>
+                            {% elif plan.deadline and plan.deadline < today %}
+                                <b class="badge-red">已超期</b>
+                            {% else %}
+                                <b class="badge-blue">进行中</b>
+                            {% endif %}
                             <em>{{ plan.workspace_sub_completed }}/{{ plan.workspace_sub_total }} 个子计划</em>
                         </span>
                         <i><span style="width:{{ plan.workspace_progress }}%"></span></i>
                     </div>
-                    <time>{{ plan.workspace_status }} · {{ plan.end_date|date:"m-d"|default:plan.date|date:"m-d" }}</time>
+                    <time>{{ plan.workspace_status }} · {{ plan.workspace_deadline_display }}</time>
                 </div>
                 {% empty %}
                 <div class="mini-empty">暂无计划</div>
@@ -245,7 +253,10 @@
             <form method="post" action="{% url 'add_plan' %}" class="workspace-form">
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{% url 'my_page' %}?tab=plans">
-                <label>日期<input type="date" name="date" required class="form-input"></label>
+                <div class="form-grid">
+                    <label>开始日期<input type="date" name="date" required class="form-input"></label>
+                    <label>截止时间<input type="date" name="deadline" class="form-input" placeholder="不设置表示至今"></label>
+                </div>
                 <label>计划内容<textarea name="content" rows="3" required class="form-input" placeholder="请输入计划内容"></textarea></label>
                 <button type="submit" class="btn btn-primary">添加计划</button>
             </form>
