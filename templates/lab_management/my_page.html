@@ -76,7 +76,7 @@
         {% if user.is_superuser or profile.can_post_announcement %}<a class="{% if active_tab == 'management' %}active{% endif %}" href="?tab=management"><svg viewBox="0 0 24 24" fill="none"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L5 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>系统管理</a>{% endif %}
     </nav>
 
-    <div class="workspace-grid">
+    <div class="workspace-grid {% if active_tab == 'profile' %}cols-2{% endif %}">
         {% if active_tab == 'profile' %}
         <section class="workspace-card" id="profile">
             <div class="workspace-card-head">
