@@ -796,6 +796,13 @@ def announcement_list(request):
         announcement.ui_tone = tone
         announcement.ui_icon = icon
     
+    # 检查用户是否有发布公告的权限
+    can_post_announcement = False
+    if request.user.is_authenticated:
+        can_post_announcement = request.user.is_superuser or (
+            hasattr(request.user, 'profile') and request.user.profile.can_post_announcement
+        )
+    
     context = {
         'announcements': page_obj.object_list,
         'page_obj': page_obj,
@@ -809,6 +816,7 @@ def announcement_list(request):
         'category': category,
         'query': query,
         'page_size': page_size,
+        'can_post_announcement': can_post_announcement,
     }
     return render(request, 'lab_management/announcement_list.html', context)
 
@@ -1249,6 +1257,14 @@ def add_sub_plan_ajax(request):
 
 @login_required
 def add_announcement(request):
+    # 检查用户是否有发布公告的权限
+    can_post = request.user.is_superuser or (
+        hasattr(request.user, 'profile') and request.user.profile.can_post_announcement
+    )
+    if not can_post:
+        messages.error(request, '您没有发布公告的权限')
+        return redirect('announcement_list')
+    
     if request.method == 'POST':
         next_url = request.POST.get('next') or 'announcement_list'
         title = request.POST.get('title')
@@ -1257,7 +1273,7 @@ def add_announcement(request):
         if category not in {'system', 'academic', 'team', 'important'}:
             category = 'system'
         is_pinned = request.user.is_superuser and request.POST.get('is_pinned') == 'on'
-        comments_enabled = request.POST.get('comments_enabled') == 'on'
+        comments_enabled = request.POST.get('comments_enabled') != 'off'
         
         if not title or not content:
             messages.error(request, '请填写标题和内容')
@@ -1275,7 +1291,8 @@ def add_announcement(request):
         messages.success(request, '公告发布成功！')
         return redirect(next_url)
     
-    return redirect('my_page')
+    # GET 请求显示发布表单
+    return render(request, 'lab_management/create_announcement.html')
 
 
 @login_required
