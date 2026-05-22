@@ -1,400 +1,357 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}{{ profile_user.first_name|default:profile_user.username }} 的主页{% endblock %}
 
 {% block content %}
 <style>
-    .up-hero {
-        background: linear-gradient(135deg, #0f2a4a 0%, #163b63 55%, #1e3a5f 100%);
-        border-radius: var(--radius-xl);
-        padding: 40px;
-        margin-bottom: 28px;
-        position: relative;
-        overflow: hidden;
-        color: white;
+    .profile-page { display:flex; flex-direction:column; gap:18px; }
+    .profile-hero-ref {
+        min-height: 210px;
+        border-radius: 12px;
+        padding: 30px 36px;
+        color: #fff;
+        display:flex;
+        align-items:center;
+        background-image:
+            linear-gradient(90deg, rgba(7,31,76,.98) 0%, rgba(10,55,127,.9) 42%, rgba(8,45,112,.58) 100%),
+            url("{% static 'assets/banners/profile-hero-bg.png' %}");
+        background-size: cover;
+        background-position: center;
+        box-shadow: 0 10px 28px rgba(15, 42, 74, .16);
+        overflow:hidden;
     }
-    .up-hero::before {
-        content: '';
-        position: absolute;
-        top: -50%; right: -10%;
-        width: 400px; height: 400px;
-        background: radial-gradient(circle, rgba(139,92,246,0.25), transparent 70%);
+    .profile-hero-inner { display:flex; align-items:center; gap:26px; width:100%; min-width:0; }
+    .profile-main-avatar {
+        width:112px; height:112px; border-radius:999px; object-fit:cover; flex:0 0 auto;
+        border:4px solid rgba(255,255,255,.34); box-shadow:0 8px 22px rgba(0,0,0,.28);
+        background:#dbeafe;
     }
-    .up-hero > * { position: relative; z-index: 1; }
-    .up-hero-content {
-        display: flex;
-        gap: 28px;
-        align-items: center;
+    .profile-main-avatar.placeholder {
+        display:flex; align-items:center; justify-content:center;
+        font-size:42px; font-weight:800; background:linear-gradient(135deg,#1d4ed8,#163b63);
     }
-    .up-avatar {
-        width: 110px; height: 110px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 4px solid rgba(255,255,255,0.25);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-        flex-shrink: 0;
+    .profile-hero-copy { min-width:0; max-width:640px; }
+    .profile-title-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:8px; }
+    .profile-title-row h1 { margin:0; font-size:30px; line-height:1.15; font-weight:800; letter-spacing:0; color:#fff; }
+    .profile-role-pill {
+        display:inline-flex; align-items:center; height:28px; padding:0 12px;
+        border-radius:999px; background:rgba(59,130,246,.26); border:1px solid rgba(191,219,254,.36);
+        color:#dbeafe; font-size:13px; font-weight:700;
     }
-    .up-avatar-ph {
-        width: 110px; height: 110px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.12);
-        backdrop-filter: blur(10px);
-        border: 4px solid rgba(255,255,255,0.2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2.8rem;
-        font-weight: 700;
-        color: white;
-        flex-shrink: 0;
+    .profile-bio { margin:0 0 18px; color:rgba(239,246,255,.9); font-size:15px; line-height:1.7; }
+    .profile-info-pills { display:flex; flex-wrap:wrap; gap:9px; }
+    .profile-info-pill {
+        display:inline-flex; align-items:center; gap:6px; min-height:30px; padding:5px 12px;
+        border-radius:999px; background:rgba(15,42,74,.42); border:1px solid rgba(219,234,254,.18);
+        color:#eff6ff; font-size:13px; text-decoration:none; backdrop-filter:blur(4px);
     }
-    .up-name {
-        font-size: 1.8rem;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-        margin-bottom: 4px;
-    }
-    .up-topic {
-        color: rgba(255,255,255,0.6);
-        font-size: 1rem;
-        margin-bottom: 12px;
-    }
-    .up-bio {
-        color: rgba(255,255,255,0.5);
-        font-size: 0.9rem;
-        line-height: 1.6;
-        margin-bottom: 16px;
-        max-width: 500px;
-    }
-    .up-links {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-    .up-link-btn {
-        background: rgba(255,255,255,0.1);
-        border: 1px solid rgba(255,255,255,0.12);
-        color: rgba(255,255,255,0.85);
-        padding: 7px 16px;
-        border-radius: 20px;
-        font-size: 0.82rem;
-        text-decoration: none;
-        transition: all 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        backdrop-filter: blur(4px);
-    }
-    .up-link-btn:hover {
-        background: rgba(255,255,255,0.2);
-        color: white;
-    }
+    .profile-info-pill:hover { color:#fff; border-color:rgba(219,234,254,.38); }
 
-    .up-section {
-        background: var(--color-surface);
-        border-radius: var(--radius-lg);
-        border: 1px solid var(--color-border-light);
-        box-shadow: var(--shadow-sm);
-        overflow: hidden;
-        margin-bottom: 24px;
+    .profile-grid { display:grid; grid-template-columns:minmax(0, 1fr) 420px; gap:18px; align-items:start; }
+    .profile-column { display:flex; flex-direction:column; gap:18px; min-width:0; }
+    .profile-card {
+        background:#fff; border:1px solid #E5E7EB; border-radius:12px;
+        box-shadow:0 1px 3px rgba(15,23,42,.08); overflow:hidden;
     }
-    .up-section-header {
-        padding: 20px 26px;
-        border-bottom: 1px solid var(--color-border-light);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+    .profile-card-header {
+        min-height:54px; padding:0 18px; border-bottom:1px solid #E5E7EB;
+        display:flex; align-items:center; justify-content:space-between; gap:14px;
     }
-    .up-section-header h3 {
-        font-size: 1.05rem;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .up-section-body { padding: 22px 26px; }
+    .profile-card-title { display:flex; align-items:center; gap:9px; margin:0; font-size:16px; font-weight:800; color:#0F2A4A; }
+    .profile-card-title .icon { color:#2563EB; }
+    .profile-card-body { padding:16px 18px; }
 
-    .up-ach-item {
-        border: 1px solid var(--color-border-light);
-        border-radius: var(--radius-md);
-        padding: 16px 18px;
-        margin-bottom: 12px;
-        transition: all 0.25s ease;
-        display: flex;
-        gap: 14px;
-        align-items: flex-start;
+    .profile-doc-list { display:flex; flex-direction:column; gap:10px; min-height:220px; }
+    .profile-doc-item {
+        border:1px solid #E5E7EB; border-radius:10px; padding:14px 14px;
+        display:flex; align-items:flex-start; gap:14px; min-width:0; background:#fff;
     }
-    .up-ach-item:hover {
-        border-color: rgba(99,102,241,0.2);
-        box-shadow: var(--shadow-sm);
+    .profile-doc-icon {
+        width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+        background:#EFF6FF; color:#2563EB; flex:0 0 auto; overflow:hidden;
     }
-    .up-ach-item:last-child { margin-bottom: 0; }
-    .up-ach-icon {
-        width: 38px; height: 38px;
-        border-radius: 9px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 17px;
-        flex-shrink: 0;
-    }
+    .profile-doc-icon img { width:24px; height:24px; object-fit:contain; }
+    .profile-doc-content { min-width:0; flex:1; }
+    .profile-doc-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .profile-doc-title { font-size:15px; font-weight:800; color:#0F2A4A; word-break:break-word; }
+    .profile-doc-date { color:#64748B; font-size:13px; white-space:nowrap; }
+    .profile-doc-desc { margin:6px 0 8px; color:#64748B; font-size:13px; line-height:1.55; }
+    .profile-mini-link { color:#2563EB; font-size:13px; font-weight:700; text-decoration:none; }
 
-    .msg-wall-item {
-        display: flex;
-        gap: 14px;
-        padding: 16px 0;
-        border-bottom: 1px solid var(--color-border-light);
+    .profile-plan-list { display:flex; flex-direction:column; gap:10px; max-height:720px; overflow:auto; padding-right:2px; }
+    .profile-plan-item { border:1px solid #E5E7EB; border-radius:10px; padding:14px; background:#fff; }
+    .profile-plan-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:8px; }
+    .profile-plan-date { font-size:13px; color:#0F2A4A; font-weight:800; }
+    .profile-plan-title { margin:8px 0 10px; color:#0F2A4A; font-size:15px; font-weight:800; line-height:1.45; }
+    .profile-tag {
+        display:inline-flex; align-items:center; height:22px; padding:0 8px; border-radius:999px;
+        background:#EFF6FF; color:#2563EB; font-size:12px; font-weight:800;
     }
-    .msg-wall-item:last-child { border-bottom: none; }
-    .mw-avatar {
-        width: 36px; height: 36px;
-        border-radius: 50%;
-        flex-shrink: 0;
+    .profile-tag.success { background:#D1FAE5; color:#059669; }
+    .profile-tag.warn { background:#FEF3C7; color:#D97706; }
+    .profile-progress-row { display:flex; align-items:center; gap:10px; margin:10px 0; }
+    .profile-progress { height:7px; background:#E5E7EB; border-radius:999px; overflow:hidden; flex:1; }
+    .profile-progress span { display:block; height:100%; background:#2563EB; border-radius:999px; }
+    .profile-progress-text { color:#F97316; font-size:13px; font-weight:800; min-width:34px; text-align:right; }
+    .profile-sub-list { display:flex; flex-direction:column; gap:4px; margin-top:8px; }
+    .profile-sub-item {
+        display:grid; grid-template-columns:20px minmax(0,1fr) 22px; align-items:center; gap:8px;
+        color:#475569; font-size:12px; border-bottom:1px dashed #E5E7EB; padding:3px 0;
     }
-    .mw-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
-    .mw-avatar-ph {
-        width: 100%; height: 100%;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #0f2a4a, #163b63);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 700;
-        font-size: 0.75rem;
+    .profile-sub-item:last-child { border-bottom:0; }
+    .profile-sub-index { color:#2563EB; font-weight:800; }
+    .profile-sub-check {
+        width:18px; height:18px; border-radius:999px; display:flex; align-items:center; justify-content:center;
+        background:#DBEAFE; color:#2563EB; font-size:12px; font-weight:800;
     }
+    .profile-sub-check.done { background:#D1FAE5; color:#059669; }
+    .profile-sub-title.done { color:#94A3B8; text-decoration:line-through; }
 
-    /* Plan list styles - same as my_page.html */
-    .plan-list-wrap {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
+    .message-form { display:flex; flex-direction:column; gap:10px; }
+    .message-form textarea {
+        width:100%; min-height:76px; border:1px solid #DDE5F0; border-radius:9px; padding:12px;
+        resize:vertical; font:inherit; color:#0F172A; background:#fff;
     }
-    .plan-list-item {
-        background: var(--color-surface);
-        border-radius: var(--radius-md);
-        padding: 16px 20px;
-        border: 1px solid var(--color-border-light);
-        box-shadow: var(--shadow-sm);
-        transition: all 0.25s ease;
-    }
-    .plan-list-item:hover {
-        border-color: rgba(99,102,241,0.2);
-        box-shadow: var(--shadow-md);
-    }
-    .plan-list-item.completed {
-        opacity: 0.85;
-    }
-    .sub-plans {
-        margin-left: 16px;
-        border-left: 2px solid var(--color-accent-light);
-        padding-left: 12px;
-        margin-top: 10px;
-    }
-    .sub-plan-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 4px 0;
-        border-bottom: 1px dashed var(--color-border);
-        font-size: 0.85rem;
-    }
-    .sub-plan-item:last-child {
-        border-bottom: none;
-    }
+    .message-form-actions { display:flex; justify-content:flex-end; }
+    .profile-muted-note { color:#64748B; font-size:13px; line-height:1.7; background:#F8FAFC; border:1px solid #E5E7EB; border-radius:9px; padding:12px; }
 
-    @media (max-width: 768px) {
-        .up-hero { padding: 28px 24px; }
-        .up-hero-content { flex-direction: column; text-align: center; }
-        .up-links { justify-content: center; }
+    .wall-list { display:flex; flex-direction:column; gap:0; }
+    .wall-item { display:flex; gap:12px; padding:14px 0; border-bottom:1px solid #E5E7EB; }
+    .wall-item:first-child { padding-top:0; }
+    .wall-item:last-child { border-bottom:0; padding-bottom:0; }
+    .wall-avatar { width:38px; height:38px; border-radius:999px; object-fit:cover; background:#DBEAFE; flex:0 0 auto; }
+    .wall-avatar.placeholder { display:flex; align-items:center; justify-content:center; color:#fff; background:#163B63; font-weight:800; }
+    .wall-main { min-width:0; flex:1; }
+    .wall-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
+    .wall-name { color:#0F2A4A; font-size:14px; font-weight:800; }
+    .wall-time { color:#94A3B8; font-size:12px; }
+    .wall-content { margin:0; color:#334155; font-size:13px; line-height:1.7; white-space:pre-wrap; }
+
+    .achievement-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .achievement-item { border:1px solid #E5E7EB; border-radius:10px; padding:12px; min-width:0; }
+    .achievement-title { font-size:14px; font-weight:800; color:#0F2A4A; margin-bottom:5px; }
+    .achievement-desc { color:#64748B; font-size:12px; line-height:1.6; margin:0; }
+    .empty-profile-state { min-height:110px; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-size:14px; text-align:center; }
+
+    @media (max-width: 1100px) {
+        .profile-grid { grid-template-columns:1fr; }
+        .profile-plan-list { max-height:none; }
+    }
+    @media (max-width: 720px) {
+        .profile-hero-ref { padding:24px 18px; }
+        .profile-hero-inner { align-items:flex-start; gap:16px; }
+        .profile-main-avatar { width:82px; height:82px; }
+        .profile-title-row h1 { font-size:25px; }
+        .achievement-list { grid-template-columns:1fr; }
+        .profile-doc-top, .profile-plan-head { flex-direction:column; align-items:flex-start; }
     }
 </style>
 
-<!-- Profile Hero -->
-<div class="up-hero anim-fade-up">
-    <div class="up-hero-content">
-        {% if profile.avatar %}
-        <img src="{{ profile.avatar.url }}" alt="头像" class="up-avatar">
-        {% else %}
-        <div class="up-avatar-ph">{{ profile_user.username|first|upper }}</div>
-        {% endif %}
-        <div>
-            <div class="up-name">{{ profile_user.first_name|default:profile_user.username }}</div>
-            <div class="up-topic">{{ profile.research_topic|default:"暂无课题" }}</div>
-            {% if profile.bio %}
-            <div class="up-bio">{{ profile.bio }}</div>
-            {% endif %}
-            <div class="up-links">
-                <!-- 成员分类标签 -->
-                <span class="up-link-btn" style="background: rgba(99, 102, 241, 0.25); border-color: rgba(99, 102, 241, 0.4);"><span class="icon icon-users" style="vertical-align: middle; margin-right: 4px;"></span>{{ profile.get_member_type_display }}{% if profile.member_type == 'master' or profile.member_type == 'undergraduate' %} · {{ profile.get_grade_display }}{% endif %}</span>
-                {% if profile.email %}
-                <a href="mailto:{{ profile.email }}" class="up-link-btn"><span class="icon icon-mail" style="vertical-align: middle; margin-right: 4px;"></span>{{ profile.email }}</a>
-                {% endif %}
-                {% if profile.phone %}
-                <a href="tel:{{ profile.phone }}" class="up-link-btn"><span class="icon icon-phone" style="vertical-align: middle; margin-right: 4px;"></span>{{ profile.phone }}</a>
-                {% endif %}
-                {% if profile.personal_page %}
-                <a href="{{ profile.personal_page }}" target="_blank" class="up-link-btn">🌐 个人主页</a>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Achievements -->
-{% if achievements %}
-<div class="up-section anim-fade-up-1">
-    <div class="up-section-header">
-        <h3><span class="icon icon-trophy" style="vertical-align: middle; margin-right: 4px;"></span>研究成果</h3>
-        <span class="tag tag-primary">{{ achievements|length }} 项</span>
-    </div>
-    <div class="up-section-body">
-        {% for ach in achievements %}
-        <div class="up-ach-item">
-            <div class="up-ach-icon" style="background: {% if ach.achievement_type == 'paper' %}rgba(37,99,235,0.1){% elif ach.achievement_type == 'patent' %}rgba(16,185,129,0.1){% elif ach.achievement_type == 'award' %}rgba(245,158,11,0.1){% else %}rgba(100,116,139,0.1){% endif %};">
-                {% if ach.achievement_type == 'paper' %}<span class="icon icon-paper"></span>{% elif ach.achievement_type == 'patent' %}<span class="icon icon-patent"></span>{% elif ach.achievement_type == 'award' %}<span class="icon icon-trophy"></span>{% elif ach.achievement_type == 'project' %}<span class="icon icon-folder"></span>{% else %}<span class="icon icon-pin"></span>{% endif %}
-            </div>
-            <div style="flex: 1; min-width: 0;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 4px;">
-                    <span style="font-weight: 600; font-size: 0.93rem;">{{ ach.title }}</span>
-                    {% if ach.date %}<span class="plan-date">{{ ach.date|date:"Y-m-d" }}</span>{% endif %}
-                </div>
-                {% if ach.description %}
-                <p style="color: var(--color-text-secondary); font-size: 0.85rem; margin-bottom: 8px; line-height: 1.5;">{{ ach.description }}</p>
-                {% endif %}
-                <div style="display: flex; gap: 12px;">
-                    {% if ach.link %}<a href="{{ ach.link }}" target="_blank" class="link" style="font-size: 0.84rem;">链接 ↗</a>{% endif %}
-                    {% if ach.file %}<a href="{{ ach.file.url }}" class="link" style="font-size: 0.84rem;" download>附件 ↓</a>{% endif %}
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
-
-<!-- Documents & Plans -->
-<div class="grid grid-2 anim-fade-up-4">
-    <div class="up-section">
-        <div class="up-section-header">
-            <h3><span class="icon icon-doc" style="vertical-align: middle; margin-right: 4px;"></span>上传的文档</h3>
-        </div>
-        <div class="up-section-body">
-            {% if documents %}
-            {% for doc in documents %}
-            <div style="border: 1px solid var(--color-border-light); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 10px; transition: all 0.2s;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                    <span style="font-weight: 600; font-size: 0.9rem;">{{ doc.title }}</span>
-                    <span class="plan-date">{{ doc.uploaded_at|date:"m-d" }}</span>
-                </div>
-                <p style="color: var(--color-text-secondary); font-size: 0.83rem; margin-bottom: 8px;">{{ doc.description|default:"无描述" }}</p>
-                <a href="{% url 'download_document' doc.id %}" class="link" style="font-size: 0.84rem;">下载 ↓</a>
-            </div>
-            {% endfor %}
+<div class="profile-page">
+    <section class="profile-hero-ref">
+        <div class="profile-hero-inner">
+            {% if profile.avatar %}
+            <img src="{{ profile.avatar.url }}" alt="{{ profile_user.first_name|default:profile_user.username }}" class="profile-main-avatar">
             {% else %}
-            <p style="color: var(--color-text-tertiary); text-align: center; padding: 20px 0;">暂无文档</p>
+            <div class="profile-main-avatar placeholder">{{ profile_user.first_name|default:profile_user.username|first|upper }}</div>
             {% endif %}
+            <div class="profile-hero-copy">
+                <div class="profile-title-row">
+                    <h1>{{ profile_user.first_name|default:profile_user.username }}</h1>
+                    <span class="profile-role-pill">{{ profile.get_member_type_display|default:"团队成员" }}{% if profile.member_type == 'master' or profile.member_type == 'undergraduate' %} · {{ profile.get_grade_display }}{% endif %}</span>
+                </div>
+                <p class="profile-bio">{{ profile.bio|default:"这个人很懒，什么也没有留下。" }}</p>
+                <div class="profile-info-pills">
+                    <span class="profile-info-pill"><span class="icon icon-users"></span>{{ profile.get_member_type_display|default:"团队成员" }}{% if profile.get_grade_display %} · {{ profile.get_grade_display }}{% endif %}</span>
+                    {% if profile.email %}<a class="profile-info-pill" href="mailto:{{ profile.email }}"><span class="icon icon-mail"></span>{{ profile.email }}</a>{% endif %}
+                    {% if profile.phone %}<a class="profile-info-pill" href="tel:{{ profile.phone }}"><span class="icon icon-phone"></span>{{ profile.phone }}</a>{% endif %}
+                    {% if profile.personal_page %}<a class="profile-info-pill" href="{{ profile.personal_page }}" target="_blank" rel="noopener"><span class="icon icon-link"></span>个人主页</a>{% endif %}
+                </div>
+            </div>
         </div>
-    </div>
+    </section>
 
-    <div class="up-section">
-        <div class="up-section-header">
-            <h3><span class="icon icon-clipboard" style="vertical-align: middle; margin-right: 4px;"></span>最近计划</h3>
-        </div>
-        <div class="up-section-body">
-            {% if plans %}
-            <div class="plan-list-wrap">
-                {% for plan in plans %}
-                <div class="plan-list-item {% if plan.is_completed %}completed{% endif %}">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span class="plan-date">{{ plan.date }}</span>
-                            {% if plan.visible_sub_plans %}
-                            <span style="background: var(--color-accent); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">{{ plan.visible_sub_plans|length }} 个子计划</span>
-                            {% endif %}
-                        </div>
-                        <span class="plan-status {% if plan.is_completed %}status-completed{% else %}status-pending{% endif %}">
-                            {% if plan.is_completed %}<span class="icon icon-check" style="vertical-align: middle; margin-right: 4px;"></span>已完成{% else %}<span class="icon icon-hourglass" style="vertical-align: middle; margin-right: 4px;"></span>进行中{% endif %}
-                        </span>
-                    </div>
-                    <div style="color: var(--color-text-primary); font-size: 0.9rem; line-height: 1.6;">{{ plan.content }}</div>
-                    
-                    {% if plan.visible_sub_plans %}
-                    <div class="sub-plans">
-                        {% for sub_plan in plan.visible_sub_plans %}
-                        <div class="sub-plan-item">
-                            <span style="color: var(--color-accent);">↳</span>
-                            <span class="{% if sub_plan.is_completed %}completed{% endif %}" style="flex: 1; {% if sub_plan.is_completed %}text-decoration: line-through; color: var(--color-text-tertiary);{% endif %}">{{ sub_plan.content }}</span>
-                            <span class="plan-status {% if sub_plan.is_completed %}status-completed{% else %}status-pending{% endif %}" style="font-size: 0.7rem;">
-                                {% if sub_plan.is_completed %}✓{% else %}○{% endif %}
-                            </span>
-                        </div>
+    <div class="profile-grid">
+        <main class="profile-column">
+            <section class="profile-card">
+                <div class="profile-card-header">
+                    <h2 class="profile-card-title"><span class="icon icon-doc"></span>上传的文档</h2>
+                    <span class="profile-tag">{{ document_count }} 份</span>
+                </div>
+                <div class="profile-card-body">
+                    {% if documents %}
+                    <div class="profile-doc-list">
+                        {% for doc in documents %}
+                        <article class="profile-doc-item">
+                            <div class="profile-doc-icon">
+                                {% if doc.document_type == 'pdf' %}
+                                <img src="{% static 'assets/file-icons/pdf.svg' %}" alt="PDF">
+                                {% elif doc.document_type == 'word' %}
+                                <img src="{% static 'assets/file-icons/word.svg' %}" alt="Word">
+                                {% elif doc.document_type == 'excel' %}
+                                <img src="{% static 'assets/file-icons/excel.svg' %}" alt="Excel">
+                                {% elif doc.document_type == 'ppt' %}
+                                <img src="{% static 'assets/file-icons/ppt.svg' %}" alt="PPT">
+                                {% elif doc.document_type == 'txt' %}
+                                <img src="{% static 'assets/file-icons/txt.svg' %}" alt="TXT">
+                                {% else %}
+                                <img src="{% static 'assets/file-icons/data.svg' %}" alt="File">
+                                {% endif %}
+                            </div>
+                            <div class="profile-doc-content">
+                                <div class="profile-doc-top">
+                                    <div>
+                                        <div class="profile-doc-title">{{ doc.title }}</div>
+                                        <div style="margin-top:5px;">
+                                            <span class="profile-tag">{{ doc.get_category_display }}</span>
+                                            {% if not doc.is_public %}<span class="profile-tag warn">仅自己可见</span>{% endif %}
+                                        </div>
+                                    </div>
+                                    <span class="profile-doc-date">{{ doc.uploaded_at|date:"m-d H:i" }}</span>
+                                </div>
+                                <p class="profile-doc-desc">{{ doc.description|default:"暂无简介" }}</p>
+                                <a href="{% url 'download_document' doc.id %}" class="profile-mini-link">下载 ↓</a>
+                            </div>
+                        </article>
                         {% endfor %}
                     </div>
+                    {% else %}
+                    <div class="empty-profile-state">暂无可查看的文档</div>
                     {% endif %}
                 </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p style="color: var(--color-text-tertiary); text-align: center; padding: 20px 0;">暂无计划</p>
-            {% endif %}
-        </div>
-    </div>
-</div>
+            </section>
 
-<!-- Leave Message -->
-<div class="up-section anim-fade-up-5">
-    <div class="up-section-header">
-        <h3>✉️ 给 {{ profile_user.first_name|default:profile_user.username }} 留言</h3>
-    </div>
-    <div class="up-section-body">
-        <form method="post" action="{% url 'send_message' profile_user.username %}">
-            {% csrf_token %}
-            <div style="display: flex; gap: 12px; align-items: flex-start;">
-                <textarea name="content" rows="3" class="form-input" placeholder="写下你想说的..." required style="flex: 1;"></textarea>
-            </div>
-            <div style="margin-top: 12px; text-align: right;">
-                <button type="submit" class="btn btn-primary">发送留言</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Message Wall -->
-<div class="up-section anim-fade-up-6">
-    <div class="up-section-header">
-        <h3>💬 留言墙</h3>
-        {% if messages_list %}<span class="tag tag-primary">{{ messages_list|length }}</span>{% endif %}
-    </div>
-    <div class="up-section-body">
-        {% if messages_list %}
-        {% for msg in messages_list %}
-        <div class="msg-wall-item">
-            <div class="mw-avatar">
-                {% if msg.sender.profile.avatar %}
-                <img src="{{ msg.sender.profile.avatar.url }}" alt="">
-                {% else %}
-                <div class="mw-avatar-ph">{{ msg.sender.username|first|upper }}</div>
-                {% endif %}
-            </div>
-            <div style="flex: 1; min-width: 0;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                    <span style="font-weight: 600; font-size: 0.9rem;">{{ msg.sender.first_name|default:msg.sender.username }}</span>
-                    <span class="plan-date">{{ msg.created_at|date:"Y-m-d H:i" }}</span>
+            {% if achievements %}
+            <section class="profile-card">
+                <div class="profile-card-header">
+                    <h2 class="profile-card-title"><span class="icon icon-trophy"></span>研究成果</h2>
+                    <span class="profile-tag">{{ achievement_count }} 项</span>
                 </div>
-                <p style="color: var(--color-text-primary); font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap;">{{ msg.content }}</p>
-            </div>
-            {% if user == msg.receiver or user == msg.sender %}
-            <a href="{% url 'delete_message' msg.id %}" onclick="return confirm('确定删除？')" style="color: var(--color-danger); text-decoration: none; font-size: 0.8rem; flex-shrink: 0;">删除</a>
+                <div class="profile-card-body">
+                    <div class="achievement-list">
+                        {% for ach in achievements %}
+                        <article class="achievement-item">
+                            <div class="achievement-title">{{ ach.title }}</div>
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:7px;">
+                                <span class="profile-tag">{{ ach.get_achievement_type_display }}</span>
+                                {% if ach.date %}<span class="profile-doc-date">{{ ach.date|date:"Y-m-d" }}</span>{% endif %}
+                            </div>
+                            {% if ach.description %}<p class="achievement-desc">{{ ach.description }}</p>{% endif %}
+                            <div style="display:flex; gap:12px; margin-top:8px;">
+                                {% if ach.link %}<a href="{{ ach.link }}" target="_blank" rel="noopener" class="profile-mini-link">链接 ↗</a>{% endif %}
+                                {% if ach.file %}<a href="{{ ach.file.url }}" class="profile-mini-link" download>附件 ↓</a>{% endif %}
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
             {% endif %}
-        </div>
-        {% endfor %}
-        {% else %}
-        <div class="empty-state" style="padding: 32px 16px;">
-            <div class="empty-state-icon">💬</div>
-            <p>暂无留言，快来抢沙发！</p>
-        </div>
-        {% endif %}
+
+            <section class="profile-card">
+                <div class="profile-card-header">
+                    <h2 class="profile-card-title"><span class="icon icon-comment"></span>给 {{ profile_user.first_name|default:profile_user.username }} 留言</h2>
+                </div>
+                <div class="profile-card-body">
+                    {% if user.is_authenticated and user != profile_user %}
+                    <form method="post" action="{% url 'send_message' profile_user.username %}" class="message-form">
+                        {% csrf_token %}
+                        <textarea name="content" placeholder="写下你想说的..." required></textarea>
+                        <div class="message-form-actions">
+                            <button type="submit" class="btn btn-primary">发送留言</button>
+                        </div>
+                    </form>
+                    {% elif user == profile_user %}
+                    <div class="profile-muted-note">这是你的个人主页，下面会显示其他成员给你的留言。</div>
+                    {% else %}
+                    <div class="profile-muted-note">登录后可以给该成员留言。</div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section class="profile-card">
+                <div class="profile-card-header">
+                    <h2 class="profile-card-title"><span class="icon icon-message"></span>留言墙</h2>
+                    <span class="profile-tag">{{ message_count }} 条</span>
+                </div>
+                <div class="profile-card-body">
+                    {% if messages_list %}
+                    <div class="wall-list">
+                        {% for msg in messages_list %}
+                        <article class="wall-item">
+                            {% if msg.sender.profile.avatar %}
+                            <img src="{{ msg.sender.profile.avatar.url }}" alt="{{ msg.sender.first_name|default:msg.sender.username }}" class="wall-avatar">
+                            {% else %}
+                            <div class="wall-avatar placeholder">{{ msg.sender.first_name|default:msg.sender.username|first|upper }}</div>
+                            {% endif %}
+                            <div class="wall-main">
+                                <div class="wall-meta">
+                                    <span class="wall-name">{{ msg.sender.first_name|default:msg.sender.username }}</span>
+                                    <span class="wall-time">{{ msg.created_at|date:"Y-m-d H:i" }}</span>
+                                </div>
+                                <p class="wall-content">{{ msg.content }}</p>
+                            </div>
+                            {% if user == msg.receiver or user == msg.sender %}
+                            <a href="{% url 'delete_message' msg.id %}" onclick="return confirm('确定删除这条留言？')" class="profile-mini-link" style="color:#EF4444;">删除</a>
+                            {% endif %}
+                        </article>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-profile-state">暂无留言</div>
+                    {% endif %}
+                </div>
+            </section>
+        </main>
+
+        <aside class="profile-column">
+            <section class="profile-card">
+                <div class="profile-card-header">
+                    <h2 class="profile-card-title"><span class="icon icon-calendar"></span>最近计划</h2>
+                    <span class="profile-tag">{{ plan_count }} 项</span>
+                </div>
+                <div class="profile-card-body">
+                    {% if plans %}
+                    <div class="profile-plan-list">
+                        {% for plan in plans %}
+                        <article class="profile-plan-item">
+                            <div class="profile-plan-head">
+                                <div>
+                                    <div class="profile-plan-date">{{ plan.date|date:"Y年n月j日" }}</div>
+                                    <div class="profile-plan-title">{{ plan.content }}</div>
+                                    {% if plan.sub_total %}
+                                    <span class="profile-tag">{{ plan.sub_total }} 个子计划</span>
+                                    {% endif %}
+                                </div>
+                                <span class="profile-tag {% if plan.is_completed %}success{% elif plan.is_overdue or plan.is_delayed %}warn{% endif %}">
+                                    {{ plan.get_status_display }}
+                                </span>
+                            </div>
+                            <div class="profile-progress-row">
+                                <div class="profile-progress"><span style="width:{{ plan.progress_rate }}%;"></span></div>
+                                <span class="profile-progress-text">{{ plan.progress_rate }}%</span>
+                            </div>
+                            {% if plan.visible_sub_plans %}
+                            <div class="profile-sub-list">
+                                {% for sub_plan in plan.visible_sub_plans|slice:":5" %}
+                                <div class="profile-sub-item">
+                                    <span class="profile-sub-index">{{ forloop.counter }}</span>
+                                    <span class="profile-sub-title {% if sub_plan.is_completed %}done{% endif %}">{{ sub_plan.content }}</span>
+                                    <span class="profile-sub-check {% if sub_plan.is_completed %}done{% endif %}">{% if sub_plan.is_completed %}✓{% else %}○{% endif %}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </article>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-profile-state">暂无可查看的计划</div>
+                    {% endif %}
+                </div>
+            </section>
+        </aside>
     </div>
 </div>
 {% endblock %}

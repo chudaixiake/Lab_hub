@@ -593,23 +593,40 @@ def team_overview(request):
 def user_profile(request, username):
     user = get_object_or_404(User, username=username)
     profile = get_object_or_404(UserProfile, user=user)
-    documents = Document.objects.filter(user=user, is_public=True)[:10]
-    
-    # 判断查看者是否有权限查看所有计划
+
     can_view_all = request.user.is_authenticated and (request.user.id == user.id or request.user.is_superuser)
-    
+
+    documents_qs = Document.objects.select_related('user', 'user__profile').filter(user=user)
+    if not can_view_all:
+        documents_qs = documents_qs.filter(is_public=True)
+    documents = list(documents_qs.order_by('-uploaded_at')[:10])
+
     if can_view_all:
-        plans = list(DailyPlan.objects.filter(user=user, parent__isnull=True).prefetch_related('sub_plans')[:10])
+        plans_qs = DailyPlan.objects.filter(user=user, parent__isnull=True)
     else:
-        plans = list(DailyPlan.objects.filter(user=user, parent__isnull=True, is_public=True).prefetch_related('sub_plans')[:10])
-    
-    # 过滤子计划（只显示公开的）
+        plans_qs = DailyPlan.objects.filter(user=user, parent__isnull=True, is_public=True)
+    plans = list(plans_qs.prefetch_related('sub_plans').order_by('-date', '-id')[:10])
+
     for plan in plans:
-        plan.visible_sub_plans = plan.sub_plans.filter(is_public=True)
-    
-    achievements = Achievement.objects.filter(user=user)[:10]
+        sub_plan_qs = plan.sub_plans.all() if can_view_all else plan.sub_plans.filter(is_public=True)
+        visible_sub_plans = list(sub_plan_qs.order_by('date', 'order', 'id'))
+        completed_count = sum(1 for sub_plan in visible_sub_plans if sub_plan.is_completed)
+        total_count = len(visible_sub_plans)
+        if total_count:
+            progress_rate = round(completed_count / total_count * 100)
+        else:
+            progress_rate = 100 if plan.is_completed else 0
+        plan.visible_sub_plans = visible_sub_plans
+        plan.sub_total = total_count
+        plan.sub_completed = completed_count
+        plan.progress_rate = progress_rate
+
+    achievements_qs = Achievement.objects.filter(user=user)
+    if not can_view_all:
+        achievements_qs = achievements_qs.filter(is_public=True)
+    achievements = list(achievements_qs.order_by('-date', '-created_at')[:10])
     messages_list = Message.objects.select_related('sender__profile').filter(receiver=user).order_by('-created_at')[:20]
-    
+
     context = {
         'profile_user': user,
         'profile': profile,
@@ -617,6 +634,11 @@ def user_profile(request, username):
         'plans': plans,
         'achievements': achievements,
         'messages_list': messages_list,
+        'can_view_all': can_view_all,
+        'document_count': documents_qs.count(),
+        'plan_count': plans_qs.count(),
+        'achievement_count': achievements_qs.count(),
+        'message_count': Message.objects.filter(receiver=user).count(),
     }
     return render(request, 'lab_management/user_profile.html', context)
 
